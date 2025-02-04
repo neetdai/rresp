@@ -14,8 +14,8 @@ impl<'a> Lexer<'a> {
     pub(crate) fn new(input: &'a [u8]) -> Self {
         let mut builder = FinderBuilder::new();
         builder.prefilter(Prefilter::Auto);
-        let finder = builder.build_forward(input);
-        let scanner = finder.find_iter(&CRLF).into_owned();
+        let finder = builder.build_forward(&CRLF);
+        let scanner = finder.find_iter(input).into_owned();
 
         Self { input, scanner, last_position: 0, }
     }
@@ -37,5 +37,18 @@ impl<'a> Iterator for Lexer<'a> {
         self.last_position = end_position + 2; // +2 to skip the CRLF
 
         Self::match_ast(split)
+    }
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_simple_string() {
+        let input = b"+hello\r\n+world\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap(), Tag::SimpleString(b"hello"));
+        assert_eq!(lexer.next().unwrap(), Tag::SimpleString(b"world"));
     }
 }
