@@ -21,9 +21,11 @@ impl<'a> Lexer<'a> {
     }
 
     fn match_ast(split: &'a [u8]) -> Option<Tag<'a>> {
-        match split.first() {
-            Some(b'+') => Some(Tag::SimpleString(&split[1..])),
-            _ => todo!(),
+        let (first, follow) = split.split_first()?;
+        match first {
+            b'+' => Some(Tag::SimpleString(follow)),
+            b'-' => Some(Tag::SimpleError(follow)),
+            _ => Some(Tag::UnKnown),
         }
     }
 }
@@ -50,5 +52,22 @@ mod test {
 
         assert_eq!(lexer.next().unwrap(), Tag::SimpleString(b"hello"));
         assert_eq!(lexer.next().unwrap(), Tag::SimpleString(b"world"));
+    }
+
+    #[test]
+    fn test_simple_error() {
+        let input = b"-error1\r\n-error2\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap(), Tag::SimpleError(b"error1"));
+        assert_eq!(lexer.next().unwrap(), Tag::SimpleError(b"error2"));
+    }
+
+    #[test]
+    fn test_simple_unknown() {
+        let input = b"unknown\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap(), Tag::UnKnown);
     }
 }
