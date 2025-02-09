@@ -5,4 +5,5 @@ pub(crate) enum Tag<'a> {
     BlobString(&'a [u8]),
     Null,
     Integer(i64),
+    Array(usize),
 }

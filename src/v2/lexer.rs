@@ -1,5 +1,5 @@
 use crate::common::Error;
-use lexical::{format::STANDARD, parse_with_options, ParseIntegerOptions};
+use lexical::{format::STANDARD, parse_with_options, FromLexicalWithOptions, ParseIntegerOptions};
 use memchr::memmem::{FindIter, Finder, FinderBuilder, Prefilter};
 
 use super::{ast::Ast, tag::Tag, utils::CRLF};
@@ -57,6 +57,15 @@ impl<'a> Lexer<'a> {
                     num_result
                         .map_err(|e| Error::from(e))
                         .map(|num| Tag::Integer(num)),
+                )
+            }
+            b'*' => {
+                let options = ParseIntegerOptions::new();
+                let len_result = parse_with_options::<usize, _, STANDARD>(follow, &options);
+                Some(
+                    len_result
+                        .map_err(|e| Error::from(e))
+                        .map(|len| Tag::Array(len))
                 )
             }
             _ => Some(Err(Error::Unknown)),
@@ -139,5 +148,20 @@ mod test {
         assert_eq!(lexer.next().unwrap(), Ok(Tag::Integer(1)));
         assert_eq!(lexer.next().unwrap(), Ok(Tag::Integer(-1)));
         assert_eq!(lexer.next().unwrap(), Ok(Tag::Integer(1)));
+    }
+
+    #[test]
+    fn test_array() {
+        let input = b"*1\r\n$5\r\nhello\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap(), Ok(Tag::Array(1)));
+        assert_eq!(lexer.next().unwrap(), Ok(Tag::BlobString(b"hello")));
+
+        let input = b"*0\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap(), Ok(Tag::Array(0)));
+
     }
 }
