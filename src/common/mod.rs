@@ -1,2 +1,4 @@
-mod parser;
 mod error;
+mod parser;
+
+pub use error::Error;

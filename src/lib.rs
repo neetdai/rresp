@@ -1,5 +1,5 @@
-mod v2;
-mod v3;
+mod common;
 mod decode;
 mod encode;
-mod common;
+mod v2;
+mod v3;
