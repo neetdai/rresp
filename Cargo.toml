@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 memchr = "2.7.4"
+thiserror = "2.0.11"
+lexical = "7.0.4"
 
 [dev-dependencies]
 criterion = {version ="0.5.1", features = ["html_reports"]}

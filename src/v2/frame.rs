@@ -1,5 +1,2 @@
-
 #[derive(Debug)]
-pub enum Frame {
-
-}
+pub enum Frame {}
