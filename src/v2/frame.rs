@@ -1,8 +1,7 @@
-use crate::common::DecodeFrame;
 
 use super::Lexer;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Frame<'a> {
     BlobString(&'a [u8]),
     Null,
@@ -11,6 +10,3 @@ pub enum Frame<'a> {
     SimpleError(&'a [u8]),
     SimpleString(&'a [u8]),
 }
-
-
-impl<'a> DecodeFrame<'a> for Frame<'a> {}

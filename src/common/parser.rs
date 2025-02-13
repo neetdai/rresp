@@ -1,9 +1,7 @@
 use super::error::Error;
 
 pub trait Parser {
-    type Frame;
+    type Frame<'a>;
 
-    fn parse<T>(input: T) -> Result<Self::Frame, Error>
-    where
-        T: AsRef<[u8]>;
+    fn parse<'a>(input: &'a [u8]) -> Result<Option<Self::Frame<'a>>, Error>;
 }
