@@ -1,3 +1,5 @@
+use crate::common::DecodeFrame;
+
 use super::Lexer;
 
 #[derive(Debug)]
@@ -9,3 +11,6 @@ pub enum Frame<'a> {
     SimpleError(&'a [u8]),
     SimpleString(&'a [u8]),
 }
+
+
+impl<'a> DecodeFrame<'a> for Frame<'a> {}
