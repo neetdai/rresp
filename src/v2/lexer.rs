@@ -27,6 +27,10 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    pub(crate) fn remaining(&self) -> usize {
+        self.last_position
+    }
+
     fn scan_blob_string(&mut self, len: usize) -> Option<ScanResult<Tag<'a>>> {
         let content = self.walk()?;
         if content.len() != len {

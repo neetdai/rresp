@@ -14,6 +14,10 @@ impl<'a> Ast<'a> {
         }
     }
 
+    pub(crate) fn remaining(&self) -> usize {
+        self.lexer.remaining()
+    }
+
     fn next_frame(&mut self) -> Option<Result<Frame<'a>, Error>> {
         match self.lexer.next() {
             Some(Ok(tag)) => {
