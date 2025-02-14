@@ -69,7 +69,7 @@ impl<'a> Lexer<'a> {
                 Some(
                     len_result
                         .map_err(|e| Error::from(e))
-                        .map(|len| Tag::Array(len))
+                        .map(|len| Tag::Array(len)),
                 )
             }
             _ => Some(Err(Error::Unknown)),
@@ -166,6 +166,5 @@ mod test {
         let mut lexer = Lexer::new(input);
 
         assert_eq!(lexer.next().unwrap(), Ok(Tag::Array(0)));
-
     }
 }

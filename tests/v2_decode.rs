@@ -1,4 +1,4 @@
-use rresp::{decode, Frame, V2, Error};
+use rresp::{decode, Error, Frame, V2};
 
 #[test]
 fn decode_v2() {
@@ -32,16 +32,20 @@ fn decode_v2() {
 
     let input = b"*6\r\n:10\r\n:-1\r\n$5\r\nhello\r\n+world\r\n-err\r\n*1\r\n+ok\r\n";
     let (frame, remaining) = decode::<V2>(input.as_slice()).unwrap().unwrap();
-    assert_eq!((frame, remaining), (Frame::Array(vec![
-        Frame::Integer(10),
-        Frame::Integer(-1),
-        Frame::BlobString(b"hello"),
-        Frame::SimpleString(b"world"),
-        Frame::SimpleError(b"err"),
-        Frame::Array(vec![
-            Frame::SimpleString(b"ok"),
-        ])
-    ]), 48));
+    assert_eq!(
+        (frame, remaining),
+        (
+            Frame::Array(vec![
+                Frame::Integer(10),
+                Frame::Integer(-1),
+                Frame::BlobString(b"hello"),
+                Frame::SimpleString(b"world"),
+                Frame::SimpleError(b"err"),
+                Frame::Array(vec![Frame::SimpleString(b"ok"),])
+            ]),
+            48
+        )
+    );
 
     let input = b":-1\r\n:1\r\n";
     let (frame, remaining) = decode::<V2>(input.as_slice()).unwrap().unwrap();

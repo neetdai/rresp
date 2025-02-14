@@ -20,16 +20,14 @@ impl<'a> Ast<'a> {
 
     fn next_frame(&mut self) -> Option<Result<Frame<'a>, Error>> {
         match self.lexer.next() {
-            Some(Ok(tag)) => {
-                match tag {
-                    Tag::BlobString(buf) => Some(Ok(Frame::BlobString(buf))),
-                    Tag::Null => Some(Ok(Frame::Null)),
-                    Tag::Integer(i) => Some(Ok(Frame::Integer(i))),
-                    Tag::SimpleString(buf) => Some(Ok(Frame::SimpleString(buf))),
-                    Tag::SimpleError(buf) => Some(Ok(Frame::SimpleError(buf))),
-                    Tag::Array(len) => Some(self.array_frame(len).map(|array| Frame::Array(array))),
-                }
-            }
+            Some(Ok(tag)) => match tag {
+                Tag::BlobString(buf) => Some(Ok(Frame::BlobString(buf))),
+                Tag::Null => Some(Ok(Frame::Null)),
+                Tag::Integer(i) => Some(Ok(Frame::Integer(i))),
+                Tag::SimpleString(buf) => Some(Ok(Frame::SimpleString(buf))),
+                Tag::SimpleError(buf) => Some(Ok(Frame::SimpleError(buf))),
+                Tag::Array(len) => Some(self.array_frame(len).map(|array| Frame::Array(array))),
+            },
             Some(Err(e)) => Some(Err(e)),
             None => None,
         }
@@ -41,7 +39,7 @@ impl<'a> Ast<'a> {
             match self.next_frame() {
                 Some(Ok(frame)) => {
                     list.push(frame);
-                },
+                }
                 Some(Err(e)) => return Err(e),
                 None => return Err(Error::NotComplete),
             }
@@ -54,6 +52,6 @@ impl<'a> Iterator for Ast<'a> {
     type Item = Result<Frame<'a>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.next_frame()   
+        self.next_frame()
     }
 }
