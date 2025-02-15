@@ -10,3 +10,8 @@ lexical = "7.0.4"
 
 [dev-dependencies]
 criterion = {version ="0.5.1", features = ["html_reports"]}
+rand = {version = "0.9.0", features = ["thread_rng"]}
+
+[[bench]]
+name = "v2_decode"
+harness = false
