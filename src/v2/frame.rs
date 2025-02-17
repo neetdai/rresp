@@ -12,7 +12,7 @@ pub enum Frame<'a> {
     SimpleString(&'a [u8]),
 }
 
-impl <'a> Frame<'a> {
+impl<'a> Frame<'a> {
     pub fn encode(&self) -> Vec<u8> {
         match self {
             Self::Null => {
@@ -21,7 +21,7 @@ impl <'a> Frame<'a> {
                 buf.extend_from_slice(b"-1");
                 buf.extend_from_slice(&CRLF);
                 buf
-            },
+            }
             Self::Integer(num) => {
                 let num_str = to_string(*num);
                 let num_str_len = num_str.as_bytes().len();
@@ -113,10 +113,7 @@ mod test {
 
     #[test]
     fn test_encode_array() {
-        let frame = Frame::Array(vec![
-            Frame::SimpleString(b"Hello"),
-            Frame::Integer(42),
-        ]);
+        let frame = Frame::Array(vec![Frame::SimpleString(b"Hello"), Frame::Integer(42)]);
         let encoded = frame.encode();
         assert_eq!(encoded, b"*2\r\n+Hello\r\n:42\r\n".to_vec());
     }

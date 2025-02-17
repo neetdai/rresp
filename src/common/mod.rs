@@ -1,5 +1,7 @@
+mod encode;
 mod error;
 mod parser;
 
+pub use encode::Encoder;
 pub use error::Error;
-pub use parser::{Parser, ParseIter, Remaining};
+pub use parser::{ParseIter, Parser, Remaining};
