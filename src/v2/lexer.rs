@@ -1,6 +1,6 @@
 use crate::common::Error;
 use lexical::{format::STANDARD, parse_with_options, FromLexicalWithOptions, ParseIntegerOptions};
-use memchr::memmem::{FindIter, Finder, FinderBuilder, Prefilter};
+use memchr::{memmem::{FindIter, Finder, FinderBuilder, Prefilter}, Memchr};
 
 use super::{ast::Ast, tag::Tag, utils::CRLF};
 
@@ -9,16 +9,18 @@ type ScanResult<T> = Result<T, Error>;
 #[derive(Debug)]
 pub(crate) struct Lexer<'a> {
     input: &'a [u8],
-    scanner: FindIter<'a, 'static>,
+    // scanner: FindIter<'a, 'static>,
+    scanner: Memchr<'a>,
     last_position: usize,
 }
 
 impl<'a> Lexer<'a> {
     pub(crate) fn new(input: &'a [u8]) -> Self {
-        let mut builder = FinderBuilder::new();
-        builder.prefilter(Prefilter::Auto);
-        let finder = builder.build_forward(&CRLF);
-        let scanner = finder.find_iter(input).into_owned();
+        // let mut builder = FinderBuilder::new();
+        // builder.prefilter(Prefilter::Auto);
+        // let finder = builder.build_forward(&CRLF);
+        // let scanner = finder.find_iter(input).into_owned();
+        let scanner = Memchr::new(b'\r', input);
 
         Self {
             input,
@@ -77,9 +79,14 @@ impl<'a> Lexer<'a> {
     }
 
     fn walk(&mut self) -> Option<&'a [u8]> {
-        let end_position = self.scanner.next()?;
-        let split = self.input.get(self.last_position..end_position)?;
-        self.last_position = end_position + 2; // +2 to skip the CRLF
+        let split = loop {
+            let end_position = self.scanner.next()?;
+            if let Some(b'\n') = self.input.get(end_position + 1) {
+                let split = self.input.get(self.last_position..end_position)?;
+                self.last_position = end_position + 2; // +2 to skip the CRLF
+                break split
+            }
+        };
         Some(split)
     }
 }
