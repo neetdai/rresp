@@ -1,5 +1,7 @@
 use lexical::to_string;
 
+use crate::EncodeLen;
+
 use super::{utils::CRLF, Lexer};
 
 #[derive(Debug, PartialEq)]
@@ -68,6 +70,26 @@ impl<'a> Frame<'a> {
                     buf.extend(tmp.into_iter());
                 }
                 buf
+            }
+        }
+    }
+}
+
+impl<'a> EncodeLen for Frame<'a> {
+    fn encode_len(&self) -> usize {
+        match self {
+            Self::Null => 5,
+            Self::Integer(num) => {
+                let num_str = to_string(*num);
+                3 + num_str.len()
+            }
+            Self::SimpleString(text) => 3 + text.len(),
+            Self::SimpleError(err) => 3 + err.len(),
+            Self::BlobString(text) => 3 + text.len() + 2,
+            Self::Array(array) => {
+                let array_len = array.len();
+                let array_len_str = to_string(array_len);
+                3 + array_len_str.len() + array.iter().map(|f| f.encode_len()).sum::<usize>()
             }
         }
     }

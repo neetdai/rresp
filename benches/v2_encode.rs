@@ -3,15 +3,36 @@ use criterion::{
 };
 use lexical::to_string;
 use rand::random;
-use rresp::{encode, Frame, V2};
+use rresp::{encode, EncodeLen, Frame, V2};
 
 fn v2_encode(c: &mut Criterion) {
     let mut group = c.benchmark_group("v2_encode");
 
     group.throughput(Throughput::Elements(18));
-    group.bench_function(BenchmarkId::new("encode_blob", 18),  |b| {
+    group.bench_function(BenchmarkId::new("encode_blob", 18), |b| {
         b.iter(|| {
             let blob_frame = Frame::BlobString(b"hello world");
+            encode::<V2>(black_box(blob_frame)).unwrap();
+        });
+    });
+
+    let blob_frame = Frame::Array(vec![
+        Frame::BlobString(b"hello world"),
+        Frame::Null,
+        Frame::Integer(1024),
+        Frame::SimpleError(b"error"),
+        Frame::SimpleString(b"OK"),
+    ]);
+    group.throughput(Throughput::Elements(blob_frame.encode_len() as u64));
+    group.bench_function(BenchmarkId::new("encode_array", 18), |b| {
+        b.iter(|| {
+            let blob_frame = Frame::Array(vec![
+                Frame::BlobString(b"hello world"),
+                Frame::Null,
+                Frame::Integer(1024),
+                Frame::SimpleError(b"error"),
+                Frame::SimpleString(b"OK"),
+            ]);
             encode::<V2>(black_box(blob_frame)).unwrap();
         });
     });
