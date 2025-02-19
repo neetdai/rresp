@@ -10,7 +10,7 @@ pub(super) use lexer::Lexer;
 
 use crate::{
     common::{Encoder, Parser},
-    Error, ParseIter, Remaining,
+    EncodeWithWriter, Error, ParseIter, Remaining,
 };
 
 pub struct V2;
@@ -27,7 +27,7 @@ impl<'a> Iterator for DecodeIter<'a> {
     }
 }
 
-impl<'a> Remaining for DecodeIter<'a> {
+impl Remaining for DecodeIter<'_> {
     fn remaining(&self) -> usize {
         self.ast.remaining()
     }
@@ -36,7 +36,7 @@ impl<'a> Remaining for DecodeIter<'a> {
 impl Parser for V2 {
     type Frame<'a> = (Frame<'a>, usize);
 
-    fn parse<'a>(input: &'a [u8]) -> Result<Option<Self::Frame<'a>>, crate::common::Error> {
+    fn parse(input: &[u8]) -> Result<Option<Self::Frame<'_>>, crate::common::Error> {
         let buff = input.as_ref();
         let mut ast = Ast::new(buff);
         let frame_result = ast.next().transpose();
@@ -50,7 +50,7 @@ impl ParseIter for V2 {
     type Item<'a> = Result<Frame<'a>, Error>;
     type Iter<'a> = DecodeIter<'a>;
 
-    fn parse_iter<'a>(input: &'a [u8]) -> Self::Iter<'a> {
+    fn parse_iter(input: &[u8]) -> Self::Iter<'_> {
         DecodeIter {
             ast: Ast::new(input),
         }
@@ -63,5 +63,16 @@ impl Encoder for V2 {
 
     fn encode(frame: Self::Frame<'_>) -> Result<Self::Item, Error> {
         Ok(frame.encode())
+    }
+}
+
+impl EncodeWithWriter for V2 {
+    type Frame<'a> = Frame<'a>;
+
+    fn encode_with_writer<W>(frame: Self::Frame<'_>, writer: &mut W) -> std::io::Result<()>
+    where
+        W: std::io::Write,
+    {
+        frame.encode_with_writer(writer)
     }
 }

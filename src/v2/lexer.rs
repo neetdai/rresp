@@ -1,6 +1,9 @@
 use crate::common::Error;
 use lexical::{format::STANDARD, parse_with_options, FromLexicalWithOptions, ParseIntegerOptions};
-use memchr::{memmem::{FindIter, Finder, FinderBuilder, Prefilter}, Memchr};
+use memchr::{
+    memmem::{FindIter, Finder, FinderBuilder, Prefilter},
+    Memchr,
+};
 
 use super::{ast::Ast, tag::Tag, utils::CRLF};
 
@@ -84,7 +87,7 @@ impl<'a> Lexer<'a> {
             if let Some(b'\n') = self.input.get(end_position + 1) {
                 let split = self.input.get(self.last_position..end_position)?;
                 self.last_position = end_position + 2; // +2 to skip the CRLF
-                break split
+                break split;
             }
         };
         Some(split)

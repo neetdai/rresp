@@ -1,3 +1,5 @@
+use std::io::{Result as IoResult, Write};
+
 use lexical::to_string;
 
 use crate::EncodeLen;
@@ -73,6 +75,54 @@ impl<'a> Frame<'a> {
             }
         }
     }
+
+    pub fn encode_with_writer<W>(&self, writer: &mut W) -> IoResult<()>
+    where
+        W: Write,
+    {
+        match self {
+            Self::Null => {
+                writer.write_all(b"$-1\r\n")?;
+            }
+            Self::Integer(num) => {
+                let num_str = to_string(*num);
+                writer.write_all(b":")?;
+                writer.write_all(num_str.as_bytes())?;
+                writer.write_all(b"\r\n")?;
+            }
+            Self::Array(array) => {
+                let array_len = array.len();
+                let array_len_str = to_string(array_len);
+                writer.write_all(b"*")?;
+                writer.write_all(array_len_str.as_bytes())?;
+                writer.write_all(b"\r\n")?;
+                for frame in array {
+                    frame.encode_with_writer(writer)?;
+                }
+            }
+            Self::BlobString(text) => {
+                let text_len = text.len();
+                let text_len_str = to_string(text_len);
+                writer.write_all(b"$")?;
+                writer.write_all(text_len_str.as_bytes())?;
+                writer.write_all(b"\r\n")?;
+                writer.write_all(text)?;
+                writer.write_all(b"\r\n")?;
+            }
+            Self::SimpleString(text) => {
+                writer.write_all(b"+")?;
+                writer.write_all(text)?;
+                writer.write_all(b"\r\n")?;
+            }
+            Self::SimpleError(text) => {
+                writer.write_all(b"-")?;
+                writer.write_all(text)?;
+                writer.write_all(b"\r\n")?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl<'a> EncodeLen for Frame<'a> {
@@ -138,5 +188,22 @@ mod test {
         let frame = Frame::Array(vec![Frame::SimpleString(b"Hello"), Frame::Integer(42)]);
         let encoded = frame.encode();
         assert_eq!(encoded, b"*2\r\n+Hello\r\n:42\r\n".to_vec());
+    }
+
+    #[test]
+    fn test_encode_with_writer() {
+        let frame = Frame::Array(vec![
+            Frame::SimpleString(b"Hello"),
+            Frame::Integer(42),
+            Frame::BlobString(b"world"),
+            Frame::Null,
+            Frame::SimpleError(b"err"),
+        ]);
+        let mut buff = Vec::with_capacity(frame.encode_len());
+        frame.encode_with_writer(&mut buff).unwrap();
+        assert_eq!(
+            buff,
+            b"*5\r\n+Hello\r\n:42\r\n$5\r\nworld\r\n$-1\r\n-err\r\n".to_vec()
+        );
     }
 }

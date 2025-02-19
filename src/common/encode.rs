@@ -1,3 +1,5 @@
+use std::io::{Result as IoResult, Write};
+
 use super::Error;
 
 pub trait Encoder {
@@ -9,4 +11,12 @@ pub trait Encoder {
 
 pub trait EncodeLen {
     fn encode_len(&self) -> usize;
+}
+
+pub trait EncodeWithWriter {
+    type Frame<'a>: EncodeLen;
+
+    fn encode_with_writer<W>(frame: Self::Frame<'_>, writer: &mut W) -> IoResult<()>
+    where
+        W: Write;
 }
