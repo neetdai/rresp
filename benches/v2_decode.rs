@@ -3,9 +3,9 @@ use criterion::{
 };
 use lexical::to_string;
 use rand::random;
-use rresp::{decode, V2};
+use rresp::{decode, v2::V2};
 
-fn build_blob(len: usize) -> Vec<u8> {
+fn build_bulk(len: usize) -> Vec<u8> {
     let mut buf = Vec::new();
     let len_str = to_string(len);
     buf.push(b'$');
@@ -38,15 +38,15 @@ fn build_null() -> Vec<u8> {
     buf
 }
 
-struct DecodeBlobParams(Vec<(Vec<u8>, usize)>);
+struct DecodeBulkParams(Vec<(Vec<u8>, usize)>);
 
-impl DecodeBlobParams {
+impl DecodeBulkParams {
     fn new() -> Self {
         let params = vec![
-            (build_blob(16), 16),
-            (build_blob(1024), 1024),
-            (build_blob(10240), 10240),
-            (build_blob(102400), 102400),
+            (build_bulk(16), 16),
+            (build_bulk(1024), 1024),
+            (build_bulk(10240), 10240),
+            (build_bulk(102400), 102400),
         ];
         Self(params)
     }
@@ -57,10 +57,10 @@ struct DecodeArrayParams(Vec<(Vec<u8>, usize)>);
 impl DecodeArrayParams {
     fn new() -> Self {
         let params = vec![
-            (build_array(10, || build_blob(16)), 10),
-            (build_array(100, || build_blob(16)), 100),
-            (build_array(1000, || build_blob(16)), 1000),
-            (build_array(10000, || build_blob(16)), 10000),
+            (build_array(10, || build_bulk(16)), 10),
+            (build_array(100, || build_bulk(16)), 100),
+            (build_array(1000, || build_bulk(16)), 1000),
+            (build_array(10000, || build_bulk(16)), 10000),
         ];
         Self(params)
     }
@@ -77,7 +77,7 @@ impl DecodeArrayHalfNullParams {
                     if is_null {
                         build_null()
                     } else {
-                        build_blob(16)
+                        build_bulk(16)
                     }
                 }),
                 10,
@@ -88,7 +88,7 @@ impl DecodeArrayHalfNullParams {
                     if is_null {
                         build_null()
                     } else {
-                        build_blob(16)
+                        build_bulk(16)
                     }
                 }),
                 100,
@@ -99,7 +99,7 @@ impl DecodeArrayHalfNullParams {
                     if is_null {
                         build_null()
                     } else {
-                        build_blob(16)
+                        build_bulk(16)
                     }
                 }),
                 1000,
@@ -110,7 +110,7 @@ impl DecodeArrayHalfNullParams {
                     if is_null {
                         build_null()
                     } else {
-                        build_blob(16)
+                        build_bulk(16)
                     }
                 }),
                 10000,
@@ -121,14 +121,14 @@ impl DecodeArrayHalfNullParams {
 }
 
 fn v2_decode(c: &mut Criterion) {
-    let blob_params = DecodeBlobParams::new();
+    let bulk_params = DecodeBulkParams::new();
     let array_params = DecodeArrayParams::new();
     let array_half_null_params = DecodeArrayHalfNullParams::new();
     let mut group = c.benchmark_group("v2_decode");
 
-    for (blob, len) in blob_params.0 {
+    for (bulk, len) in bulk_params.0 {
         group.throughput(Throughput::Elements(len as u64));
-        group.bench_with_input(BenchmarkId::new("decode_blob", len), &blob, |b, i| {
+        group.bench_with_input(BenchmarkId::new("decode_bulk", len), &bulk, |b, i| {
             b.iter(|| decode::<V2>(black_box(i)).unwrap().unwrap());
         });
     }

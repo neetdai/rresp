@@ -1,4 +1,4 @@
-use rresp::{encode, Error, Frame, V2};
+use rresp::{encode, Error, v2::{Frame, V2}};
 
 #[test]
 fn test_encode_simple_string() {
@@ -23,7 +23,7 @@ fn test_encode_integer() {
 
 #[test]
 fn test_encode_bulk_string() {
-    let frame = Frame::BlobString(b"hello");
+    let frame = Frame::BulkString(b"hello");
     let encoded = encode::<V2>(frame).unwrap();
     assert_eq!(encoded, b"$5\r\nhello\r\n");
 }

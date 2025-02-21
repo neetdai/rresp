@@ -12,6 +12,6 @@ pub enum Error {
     #[error("invalid length")]
     SyntaxLen(#[from] LexicalError),
 
-    #[error("invalid blob string")]
-    InvalidBlobString,
+    #[error("invalid bulk string")]
+    InvalidBulkString,
 }

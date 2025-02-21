@@ -8,7 +8,7 @@ use super::{utils::CRLF, Lexer};
 
 #[derive(Debug, PartialEq)]
 pub enum Frame<'a> {
-    BlobString(&'a [u8]),
+    BulkString(&'a [u8]),
     Null,
     Integer(i64),
     Array(Vec<Frame<'a>>),
@@ -49,7 +49,7 @@ impl<'a> Frame<'a> {
                 buf.extend_from_slice(&CRLF);
                 buf
             }
-            Self::BlobString(text) => {
+            Self::BulkString(text) => {
                 let text_len = text.len();
                 let text_len_str = to_string(text_len);
                 let mut buf = Vec::with_capacity(5 + text_len + text_len_str.len());
@@ -100,7 +100,7 @@ impl<'a> Frame<'a> {
                     frame.encode_with_writer(writer)?;
                 }
             }
-            Self::BlobString(text) => {
+            Self::BulkString(text) => {
                 let text_len = text.len();
                 let text_len_str = to_string(text_len);
                 writer.write_all(b"$")?;
@@ -135,7 +135,7 @@ impl<'a> EncodeLen for Frame<'a> {
             }
             Self::SimpleString(text) => 3 + text.len(),
             Self::SimpleError(err) => 3 + err.len(),
-            Self::BlobString(text) => 3 + text.len() + 2,
+            Self::BulkString(text) => 3 + text.len() + 2,
             Self::Array(array) => {
                 let array_len = array.len();
                 let array_len_str = to_string(array_len);
@@ -178,7 +178,7 @@ mod test {
 
     #[test]
     fn test_encode_blob_string() {
-        let frame = Frame::BlobString(b"Hello, World!");
+        let frame = Frame::BulkString(b"Hello, World!");
         let encoded = frame.encode();
         assert_eq!(encoded, b"$13\r\nHello, World!\r\n".to_vec());
     }
@@ -195,7 +195,7 @@ mod test {
         let frame = Frame::Array(vec![
             Frame::SimpleString(b"Hello"),
             Frame::Integer(42),
-            Frame::BlobString(b"world"),
+            Frame::BulkString(b"world"),
             Frame::Null,
             Frame::SimpleError(b"err"),
         ]);

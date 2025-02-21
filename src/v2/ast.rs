@@ -21,7 +21,7 @@ impl<'a> Ast<'a> {
     fn next_frame(&mut self) -> Option<Result<Frame<'a>, Error>> {
         match self.lexer.next() {
             Some(Ok(tag)) => match tag {
-                Tag::BlobString(buf) => Some(Ok(Frame::BlobString(buf))),
+                Tag::BulkString(buf) => Some(Ok(Frame::BulkString(buf))),
                 Tag::Null => Some(Ok(Frame::Null)),
                 Tag::Integer(i) => Some(Ok(Frame::Integer(i))),
                 Tag::SimpleString(buf) => Some(Ok(Frame::SimpleString(buf))),

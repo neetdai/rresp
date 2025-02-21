@@ -39,9 +39,9 @@ impl<'a> Lexer<'a> {
     fn scan_blob_string(&mut self, len: usize) -> Option<ScanResult<Tag<'a>>> {
         let content = self.walk()?;
         if content.len() != len {
-            Some(Err(Error::InvalidBlobString))
+            Some(Err(Error::InvalidBulkString))
         } else {
-            Some(Ok(Tag::BlobString(content)))
+            Some(Ok(Tag::BulkString(content)))
         }
     }
 
@@ -138,13 +138,13 @@ mod test {
         let input = b"$5\r\nhello\r\n$5\r\nworld\r\n";
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap(), Ok(Tag::BlobString(b"hello")));
-        assert_eq!(lexer.next().unwrap(), Ok(Tag::BlobString(b"world")));
+        assert_eq!(lexer.next().unwrap(), Ok(Tag::BulkString(b"hello")));
+        assert_eq!(lexer.next().unwrap(), Ok(Tag::BulkString(b"world")));
 
         let input = b"$-1\r\n$5\r\nhello\r\n";
         let mut lexer = Lexer::new(input);
         assert_eq!(lexer.next().unwrap(), Ok(Tag::Null));
-        assert_eq!(lexer.next().unwrap(), Ok(Tag::BlobString(b"hello")));
+        assert_eq!(lexer.next().unwrap(), Ok(Tag::BulkString(b"hello")));
 
         let input = b"$3.0\r\n";
         let mut lexer = Lexer::new(input);
@@ -170,7 +170,7 @@ mod test {
         let mut lexer = Lexer::new(input);
 
         assert_eq!(lexer.next().unwrap(), Ok(Tag::Array(1)));
-        assert_eq!(lexer.next().unwrap(), Ok(Tag::BlobString(b"hello")));
+        assert_eq!(lexer.next().unwrap(), Ok(Tag::BulkString(b"hello")));
 
         let input = b"*0\r\n";
         let mut lexer = Lexer::new(input);

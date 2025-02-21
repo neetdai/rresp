@@ -1,4 +1,4 @@
-use rresp::{decode, Error, Frame, V2};
+use rresp::{decode, Error, v2::{Frame, V2}};
 
 #[test]
 fn decode_v2() {
@@ -24,7 +24,7 @@ fn decode_v2() {
 
     let input = b"$5\r\nhello\r\n";
     let (frame, remaining) = decode::<V2>(input.as_slice()).unwrap().unwrap();
-    assert_eq!((frame, remaining), (Frame::BlobString(b"hello"), 11));
+    assert_eq!((frame, remaining), (Frame::BulkString(b"hello"), 11));
 
     let input = b"$-1\r\n";
     let (frame, remaining) = decode::<V2>(input.as_slice()).unwrap().unwrap();
@@ -38,7 +38,7 @@ fn decode_v2() {
             Frame::Array(vec![
                 Frame::Integer(10),
                 Frame::Integer(-1),
-                Frame::BlobString(b"hello"),
+                Frame::BulkString(b"hello"),
                 Frame::SimpleString(b"world"),
                 Frame::SimpleError(b"err"),
                 Frame::Array(vec![Frame::SimpleString(b"ok"),])
