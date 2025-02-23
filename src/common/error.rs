@@ -14,4 +14,10 @@ pub enum Error {
 
     #[error("invalid bulk string")]
     InvalidBulkString,
+
+    #[error("invalid array")]
+    InvalidArray,
+
+    #[error("invalid error")]
+    InvalidError,
 }

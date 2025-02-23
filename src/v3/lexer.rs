@@ -52,18 +52,52 @@ impl<'a> Lexer<'a> {
                     Ok(len) => {
                         start_position = end_position + 2;
                         end_position = self.scanner.next()?;
-                        self.last_position = start_position;
+                        let len = len as usize;
+                        if len > end_position - start_position {
+                            return Some(Err(Error::from(Error::InvalidBulkString)));
+                        }
+
+                        self.last_position = end_position;
                         TagType::BulkString
                     },
                     Err(e) => return Some(Err(Error::from(e))),
                 }
             },
             b'*' => {
-                TagType::Array
+                let follow = self.input.get(start_position..end_position)?;
+                let options = ParseIntegerOptions::new();
+                let len_result = parse_with_options::<isize, _, STANDARD>(follow, &options);
+                match len_result {
+                    Ok(-1) => TagType::Null,
+                    Ok(len) if len < 0 => return Some(Err(Error::from(Error::InvalidArray))),
+                    Ok(_) => TagType::Array,
+                    Err(e) => return Some(Err(Error::from(e))),
+                }
+            },
+            b'_' => TagType::Null,
+            b'#' => TagType::Boolean,
+            b',' => TagType::Double,
+            b'(' => TagType::BigNumber,
+            b'!' => {
+                let follow = self.input.get(start_position..end_position)?;
+                let options = ParseIntegerOptions::new();
+                let len_result = parse_with_options::<usize, _, STANDARD>(follow, &options);
+                match len_result {
+                    Ok(len) => {
+                        start_position = end_position + 3;
+                        end_position = self.walk()?;
+                        if len > end_position - start_position {
+                            return Some(Err(Error::InvalidError));
+                        } else {
+                            TagType::BulkError
+                        }
+                    }
+                    Err(e) => return Some(Err(Error::from(e))),
+                }
             }
-            _ => {
-                todo!()
-            }
+            b'~'=> TagType::Set,
+            b'%' => TagType::Map,
+            _ => return Some(Err(Error::Unknown)),
         };
 
         Some(Ok(Tag {
