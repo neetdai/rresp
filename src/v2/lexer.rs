@@ -36,7 +36,7 @@ impl<'a> Lexer<'a> {
         self.last_position
     }
 
-    fn scan_blob_string(&mut self, len: usize) -> Option<ScanResult<Tag<'a>>> {
+    fn scan_bulk_string(&mut self, len: usize) -> Option<ScanResult<Tag<'a>>> {
         let content = self.walk()?;
         if content.len() != len {
             Some(Err(Error::InvalidBulkString))
@@ -45,7 +45,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn match_ast(&mut self, split: &'a [u8]) -> Option<ScanResult<Tag<'a>>> {
+    fn match_tag(&mut self, split: &'a [u8]) -> Option<ScanResult<Tag<'a>>> {
         let (first, follow) = split.split_first()?;
         match first {
             b'+' => Some(Ok(Tag::SimpleString(follow))),
@@ -55,7 +55,7 @@ impl<'a> Lexer<'a> {
                 let len_result = parse_with_options::<isize, _, STANDARD>(follow, &options);
                 match len_result {
                     Ok(-1) => Some(Ok(Tag::Null)),
-                    Ok(len) => self.scan_blob_string(len as usize),
+                    Ok(len) => self.scan_bulk_string(len as usize),
                     Err(e) => Some(Err(Error::from(e))),
                 }
             }
@@ -99,7 +99,7 @@ impl<'a> Iterator for Lexer<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let split = self.walk()?;
-        self.match_ast(split)
+        self.match_tag(split)
     }
 }
 
