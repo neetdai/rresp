@@ -27,6 +27,7 @@ impl<'a> Lexer<'a> {
     fn walk(&mut self) -> Option<usize> {
         let end_position = loop {
             let end_position = self.scanner.next()?;
+            dbg!(&end_position);
             if let Some(b'\n') = self.input.get(end_position + 1) {
                 break end_position;
             }
@@ -84,7 +85,7 @@ impl<'a> Lexer<'a> {
                 let len_result = parse_with_options::<usize, _, STANDARD>(follow, &options);
                 match len_result {
                     Ok(len) => {
-                        start_position = end_position + 3;
+                        start_position = end_position + 2;
                         end_position = self.walk()?;
                         if len > end_position - start_position {
                             return Some(Err(Error::InvalidError));
@@ -117,5 +118,51 @@ impl<'a> Iterator for Lexer<'a> {
         self.last_position = end_position + 2;
 
         tag_result
+    }
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_simple_string() {
+        let input = b"+hello\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::SimpleString, start_position: 1, end_position: 6});
+    }
+
+    #[test]
+    fn test_simple_error() {
+        let input = b"-err\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::SimpleError, start_position: 1, end_position: 4});
+    }
+
+    #[test]
+    fn test_bulk_string() {
+        let input = b"$5\r\nhello\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::BulkString, start_position: 4, end_position: 9});
+    }
+
+    #[test]
+    fn test_integer() {
+        let input = b":1\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::Integer, start_position: 1, end_position: 2});
+
+        let input = b":-1\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::Integer, start_position: 1, end_position: 3});
+
+        let input = b":+1\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::Integer, start_position: 1, end_position: 3});
     }
 }

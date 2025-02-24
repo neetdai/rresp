@@ -1,5 +1,5 @@
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) enum TagType {
     BulkString,
     SimpleString,
@@ -17,7 +17,7 @@ pub(crate) enum TagType {
     Push,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct Tag {
     pub(crate) tag_type: TagType,
     pub(crate) start_position: usize,
