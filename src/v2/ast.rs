@@ -18,6 +18,7 @@ impl<'a> Ast<'a> {
         self.lexer.remaining()
     }
 
+    #[inline(always)]
     fn next_frame(&mut self) -> Option<Result<Frame<'a>, Error>> {
         match self.lexer.next() {
             Some(Ok(tag)) => match tag {

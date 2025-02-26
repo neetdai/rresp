@@ -165,4 +165,28 @@ mod test {
 
         assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::Integer, start_position: 1, end_position: 3});
     }
+
+    #[test]
+    fn test_boolean() {
+        let input = b"#t\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::Boolean, start_position: 1, end_position: 2});
+    }
+
+    #[test]
+    fn test_big_number() {
+        let input = b"(0123456789\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::BigNumber, start_position: 1, end_position: 11});
+    }
+
+    #[test]
+    fn test_bulk_error() {
+        let input = b"!5\r\nerror\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::BulkError, start_position: 4, end_position: 9});
+    }
 }
