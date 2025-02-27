@@ -20,4 +20,7 @@ pub enum Error {
 
     #[error("invalid error")]
     InvalidError,
+
+    #[error("invalid boolean")]
+    InvalidBoolean,
 }
