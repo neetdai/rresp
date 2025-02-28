@@ -7,5 +7,14 @@ pub enum Frame<'a> {
     },
     Boolean {
         data: bool,
+    },
+    Null {
+        data: (),
+    },
+    Integer {
+        data: isize,
+    },
+    Double {
+        data: f64,
     }
 }

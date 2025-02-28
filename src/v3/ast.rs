@@ -1,3 +1,5 @@
+use lexical::{format::STANDARD, parse_with_options, ParseFloatOptions, ParseIntegerOptions};
+
 use crate::common::Error;
 
 use super::{frame::Frame, lexer::Lexer, tag::TagType};
@@ -21,6 +23,10 @@ impl<'a> Ast<'a> {
             Some(Ok(tag)) => match tag.tag_type {
                 TagType::Boolean => Some(self.parse_boolean(tag.start_position, tag.end_position)),
                 TagType::SimpleString => Some(self.parse_simple_string(tag.start_position, tag.end_position)),
+                TagType::SimpleError => Some(self.parse_simple_error(tag.start_position, tag.end_position)),
+                TagType::Null => Some(Ok(Frame::Null { data: () })),
+                TagType::Integer => Some(self.parse_integer(tag.start_position, tag.end_position)),
+                TagType::Double => Some(self.parse_double(tag.start_position, tag.end_position)),
                 _ => todo!(),
             }
             Some(Err(err)) => Some(Err(err)),
@@ -42,7 +48,36 @@ impl<'a> Ast<'a> {
 
     fn parse_simple_string(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
-            Some(data) => Ok(Frame::SimpleString { data: data }),
+            Some(data) => Ok(Frame::SimpleString { data }),
+            None => Err(Error::NotComplete),
+        }
+    }
+
+    fn parse_simple_error(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+        match self.input.get(start_position..end_position) {
+            Some(data) => Ok(Frame::SimpleString { data, }),
+            None => Err(Error::NotComplete),
+        }
+    }
+
+    fn parse_integer(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+        match self.input.get(start_position..end_position) {
+            Some(number_str) => {
+                let option = ParseIntegerOptions::new();
+                let number = parse_with_options::<isize, &[u8], STANDARD>(number_str, &option)?;
+                Ok(Frame::Integer { data: number })
+            }
+            None => Err(Error::NotComplete),
+        }
+    }
+
+    fn parse_double(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+        match self.input.get(start_position..end_position) {
+            Some(number_str) => {
+                let option = ParseFloatOptions::new();
+                let number = parse_with_options::<f64, &[u8], STANDARD>(number_str, &option)?;
+                Ok(Frame::Double { data: number })
+            }
             None => Err(Error::NotComplete),
         }
     }
