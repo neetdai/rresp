@@ -98,6 +98,23 @@ impl<'a> Lexer<'a> {
             }
             b'~'=> TagType::Set,
             b'%' => TagType::Map,
+            b'=' => {
+                let follow = self.input.get(start_position..end_position)?;
+                let options = ParseIntegerOptions::new();
+                let len_result = parse_with_options::<usize, _, STANDARD>(follow, &options);
+                match len_result {
+                    Ok(len) => {
+                        start_position = end_position + 2;
+                        end_position = self.walk()?;
+                        if len > end_position - start_position {
+                            return Some(Err(Error::InvalidError));
+                        } else {
+                            TagType::VerbatimString
+                        }
+                    }
+                    Err(e) => return Some(Err(Error::from(e))),
+                }
+            }
             _ => return Some(Err(Error::Unknown)),
         };
 

@@ -27,6 +27,8 @@ impl<'a> Ast<'a> {
                 TagType::Null => Some(Ok(Frame::Null { data: () })),
                 TagType::Integer => Some(self.parse_integer(tag.start_position, tag.end_position)),
                 TagType::Double => Some(self.parse_double(tag.start_position, tag.end_position)),
+                TagType::BulkString => Some(self.parse_bulk_string(tag.start_position, tag.end_position)),
+
                 _ => todo!(),
             }
             Some(Err(err)) => Some(Err(err)),
@@ -55,7 +57,7 @@ impl<'a> Ast<'a> {
 
     fn parse_simple_error(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
-            Some(data) => Ok(Frame::SimpleString { data, }),
+            Some(data) => Ok(Frame::SimpleError { data, }),
             None => Err(Error::NotComplete),
         }
     }
@@ -80,6 +82,20 @@ impl<'a> Ast<'a> {
             }
             None => Err(Error::NotComplete),
         }
+    }
+
+    fn parse_bulk_string(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+        match self.input.get(start_position..end_position) {
+            Some(data) => Ok(Frame::Bulkstring { data }),
+            None => Err(Error::NotComplete),
+        }
+    }
+
+    fn parse_verbatim_string(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+        let encode_type = self.input.get(start_position..start_position + 3).ok_or_else(|| Error::NotComplete)?;
+        let encode_type = encode_type.try_into().map_err(|_|Error::Unknown)?;
+        let data = self.input.get(start_position + 3..end_position).ok_or_else(|| Error::NotComplete)?;
+        Ok(Frame::VerbatimString { data: (encode_type, data) })
     }
 }
 
