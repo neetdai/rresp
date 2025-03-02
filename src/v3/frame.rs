@@ -23,6 +23,9 @@ pub enum Frame<'a> {
     Bulkstring {
         data: &'a [u8],
     },
+    BulkError {
+        data: &'a [u8],
+    },
     VerbatimString {
         data: ([u8; 3], &'a [u8]),
     }

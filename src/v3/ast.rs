@@ -28,7 +28,8 @@ impl<'a> Ast<'a> {
                 TagType::Integer => Some(self.parse_integer(tag.start_position, tag.end_position)),
                 TagType::Double => Some(self.parse_double(tag.start_position, tag.end_position)),
                 TagType::BulkString => Some(self.parse_bulk_string(tag.start_position, tag.end_position)),
-
+                TagType::BulkError => Some(self.parse_bulk_error(tag.start_position, tag.end_position)),
+                TagType::VerbatimString => Some(self.parse_verbatim_string(tag.start_position, tag.end_position)),
                 _ => todo!(),
             }
             Some(Err(err)) => Some(Err(err)),
@@ -87,6 +88,13 @@ impl<'a> Ast<'a> {
     fn parse_bulk_string(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
             Some(data) => Ok(Frame::Bulkstring { data }),
+            None => Err(Error::NotComplete),
+        }
+    }
+
+    fn parse_bulk_error(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+        match self.input.get(start_position..end_position) {
+            Some(data) => Ok(Frame::BulkError { data }),
             None => Err(Error::NotComplete),
         }
     }
