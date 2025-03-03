@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use lexical::{format::STANDARD, parse_with_options, ParseFloatOptions, ParseIntegerOptions};
 
 use crate::common::Error;
@@ -100,10 +102,70 @@ impl<'a> Ast<'a> {
     }
 
     fn parse_verbatim_string(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
-        let encode_type = self.input.get(start_position..start_position + 3).ok_or_else(|| Error::NotComplete)?;
+        let encode_type = self.input.get(start_position..start_position + 3).ok_or( Error::NotComplete)?;
         let encode_type = encode_type.try_into().map_err(|_|Error::Unknown)?;
-        let data = self.input.get(start_position + 3..end_position).ok_or_else(|| Error::NotComplete)?;
+        let data = self.input.get(start_position + 3..end_position).ok_or(Error::NotComplete)?;
         Ok(Frame::VerbatimString { data: (encode_type, data) })
+    }
+
+    fn parse_array(&mut self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+        let len_bytes = self.input.get(start_position..end_position).ok_or( Error::NotComplete)?;
+        let options = ParseIntegerOptions::new();
+        let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
+
+        let mut data = Vec::with_capacity(len);
+        let mut queue = VecDeque::new();
+        queue.push_back(len);
+
+        while let Some(len) = queue.pop_front() {
+            for _ in 0..len {
+                match self.lexer.next() {
+                    Some(Ok(tag)) => {
+                        match tag.tag_type {
+                            TagType::Array => {
+                                let len_bytes = self.input.get(start_position..end_position).ok_or( Error::NotComplete)?;
+                                let options = ParseIntegerOptions::new();
+                                let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
+                                queue.push_back(len);
+                            }
+                            TagType::Double => {
+                                let frame = self.parse_double(tag.start_position, tag.end_position)?;
+                                data.push(frame);
+                            }
+                            TagType::SimpleString => {
+                                let frame = self.parse_simple_string(tag.start_position, tag.end_position)?;
+                                data.push(frame);
+                            }
+                            TagType::SimpleError => {
+                                let frame = self.parse_simple_error(tag.start_position, tag.end_position)?;
+                                data.push(frame);
+                            }
+                            TagType::BulkString => {
+                                let frame = self.parse_bulk_string(tag.start_position, tag.end_position)?;
+                                data.push(frame);
+                            }
+                            TagType::BulkError => {
+                                let frame = self.parse_bulk_error(tag.start_position, tag.end_position)?;
+                                data.push(frame);
+                            }
+                            TagType::Integer => {
+                                let frame = self.parse_integer(tag.start_position, tag.end_position)?;
+                                data.push(frame);
+                            }
+                            _=> todo!(),
+                        }
+                    }
+                    Some(Err(e)) => {
+                        return Err(e);
+                    }
+                    None => {
+                        return Err(Error::NotComplete);
+                    }
+                }
+            }
+        }
+
+        Ok(Frame::Array{ data })
     }
 }
 
@@ -112,5 +174,21 @@ impl<'a> Iterator for Ast<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_frame()
+    }
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_array() {
+        let data = b"*3\r\n$3\r\nfoo\r\n$3\r\nbar\r\n$3\r\nbaz\r\n";
+        let mut ast = Ast::new(data);
+
+        assert_eq!(ast.next().unwrap().unwrap(), Frame::Array{ data: vec![
+            Frame::Bulkstring { data: b"foo" },
+            Frame::Bulkstring{ data: b"bar" },
+            Frame::Bulkstring{ data: b"baz" },
+        ]});
     }
 }

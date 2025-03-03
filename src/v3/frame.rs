@@ -28,5 +28,8 @@ pub enum Frame<'a> {
     },
     VerbatimString {
         data: ([u8; 3], &'a [u8]),
+    },
+    Array {
+        data: Vec<Frame<'a>>,
     }
 }
