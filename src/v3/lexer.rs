@@ -40,10 +40,20 @@ impl<'a> Lexer<'a> {
         let first = self.input.get(start_position)?;
         let mut start_position = start_position + 1;
 
+        dbg!(&first);
         let tag_type = match first {
-            b'+' => TagType::SimpleString,
-            b'-' => TagType::SimpleError,
-            b':' => TagType::Integer,
+            b'+' => {
+                self.last_position = end_position + 2;
+                TagType::SimpleString
+            },
+            b'-' => {
+                self.last_position = end_position + 2;
+                TagType::SimpleError
+            },
+            b':' => {
+                self.last_position =  end_position + 2;
+                TagType::Integer
+            },
             b'$' => {
                 let follow = self.input.get(start_position..end_position)?;
                 let options = ParseIntegerOptions::new();
@@ -52,13 +62,16 @@ impl<'a> Lexer<'a> {
                     Ok(-1) => TagType::Null,
                     Ok(len) => {
                         start_position = end_position + 2;
+                        dbg!(&start_position);
                         end_position = self.scanner.next()?;
+                        dbg!(&end_position);
                         let len = len as usize;
                         if len > end_position - start_position {
                             return Some(Err(Error::from(Error::InvalidBulkString)));
                         }
 
-                        self.last_position = end_position;
+                        self.last_position = end_position + 2;
+                        dbg!(&self.last_position);
                         TagType::BulkString
                     },
                     Err(e) => return Some(Err(Error::from(e))),
@@ -68,6 +81,7 @@ impl<'a> Lexer<'a> {
                 let follow = self.input.get(start_position..end_position)?;
                 let options = ParseIntegerOptions::new();
                 let len_result = parse_with_options::<isize, _, STANDARD>(follow, &options);
+                self.last_position = end_position + 2;
                 match len_result {
                     Ok(-1) => TagType::Null,
                     Ok(len) if len < 0 => return Some(Err(Error::from(Error::InvalidArray))),
@@ -75,10 +89,22 @@ impl<'a> Lexer<'a> {
                     Err(e) => return Some(Err(Error::from(e))),
                 }
             },
-            b'_' => TagType::Null,
-            b'#' => TagType::Boolean,
-            b',' => TagType::Double,
-            b'(' => TagType::BigNumber,
+            b'_' => {
+                self.last_position = end_position + 2;
+                TagType::Null
+            },
+            b'#' => {
+                self.last_position = end_position + 2;
+                TagType::Boolean
+            },
+            b',' => {
+                self.last_position = end_position + 2;
+                TagType::Double
+            },
+            b'(' => {
+                self.last_position = end_position + 2;
+                TagType::BigNumber
+            },
             b'!' => {
                 let follow = self.input.get(start_position..end_position)?;
                 let options = ParseIntegerOptions::new();
@@ -90,14 +116,21 @@ impl<'a> Lexer<'a> {
                         if len > end_position - start_position {
                             return Some(Err(Error::InvalidError));
                         } else {
+                            self.last_position = end_position + 2;
                             TagType::BulkError
                         }
                     }
                     Err(e) => return Some(Err(Error::from(e))),
                 }
             }
-            b'~'=> TagType::Set,
-            b'%' => TagType::Map,
+            b'~'=> {
+                self.last_position = end_position + 2;
+                TagType::Set
+            },
+            b'%' => {
+                self.last_position = end_position + 2;
+                TagType::Map
+            },
             b'=' => {
                 let follow = self.input.get(start_position..end_position)?;
                 let options = ParseIntegerOptions::new();
@@ -109,6 +142,7 @@ impl<'a> Lexer<'a> {
                         if len > end_position - start_position {
                             return Some(Err(Error::InvalidError));
                         } else {
+                            self.last_position = end_position + 2;
                             TagType::VerbatimString
                         }
                     }
@@ -119,6 +153,7 @@ impl<'a> Lexer<'a> {
         };
 
         Some(Ok(Tag {
+            
             tag_type,
             start_position,
             end_position,
@@ -132,7 +167,8 @@ impl<'a> Iterator for Lexer<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let end_position = self.walk()?;
         let tag_result = self.match_tag(self.last_position, end_position);
-        self.last_position = end_position + 2;
+        // self.last_position = end_position + 2;
+        dbg!(&self.last_position);
 
         tag_result
     }

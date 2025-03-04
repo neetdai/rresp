@@ -32,6 +32,7 @@ impl<'a> Ast<'a> {
                 TagType::BulkString => Some(self.parse_bulk_string(tag.start_position, tag.end_position)),
                 TagType::BulkError => Some(self.parse_bulk_error(tag.start_position, tag.end_position)),
                 TagType::VerbatimString => Some(self.parse_verbatim_string(tag.start_position, tag.end_position)),
+                TagType::Array => Some(self.parse_array(tag.start_position, tag.end_position)),
                 _ => todo!(),
             }
             Some(Err(err)) => Some(Err(err)),
