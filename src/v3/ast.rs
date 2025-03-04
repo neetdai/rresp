@@ -24,23 +24,37 @@ impl<'a> Ast<'a> {
         match self.lexer.next() {
             Some(Ok(tag)) => match tag.tag_type {
                 TagType::Boolean => Some(self.parse_boolean(tag.start_position, tag.end_position)),
-                TagType::SimpleString => Some(self.parse_simple_string(tag.start_position, tag.end_position)),
-                TagType::SimpleError => Some(self.parse_simple_error(tag.start_position, tag.end_position)),
+                TagType::SimpleString => {
+                    Some(self.parse_simple_string(tag.start_position, tag.end_position))
+                }
+                TagType::SimpleError => {
+                    Some(self.parse_simple_error(tag.start_position, tag.end_position))
+                }
                 TagType::Null => Some(Ok(Frame::Null { data: () })),
                 TagType::Integer => Some(self.parse_integer(tag.start_position, tag.end_position)),
                 TagType::Double => Some(self.parse_double(tag.start_position, tag.end_position)),
-                TagType::BulkString => Some(self.parse_bulk_string(tag.start_position, tag.end_position)),
-                TagType::BulkError => Some(self.parse_bulk_error(tag.start_position, tag.end_position)),
-                TagType::VerbatimString => Some(self.parse_verbatim_string(tag.start_position, tag.end_position)),
+                TagType::BulkString => {
+                    Some(self.parse_bulk_string(tag.start_position, tag.end_position))
+                }
+                TagType::BulkError => {
+                    Some(self.parse_bulk_error(tag.start_position, tag.end_position))
+                }
+                TagType::VerbatimString => {
+                    Some(self.parse_verbatim_string(tag.start_position, tag.end_position))
+                }
                 TagType::Array => Some(self.parse_array(tag.start_position, tag.end_position)),
                 _ => todo!(),
-            }
+            },
             Some(Err(err)) => Some(Err(err)),
             None => None,
         }
     }
 
-    fn parse_boolean(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+    fn parse_boolean(
+        &self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
         if end_position - start_position != 1 {
             return Err(Error::InvalidBoolean);
         }
@@ -52,21 +66,33 @@ impl<'a> Ast<'a> {
         }
     }
 
-    fn parse_simple_string(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+    fn parse_simple_string(
+        &self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
             Some(data) => Ok(Frame::SimpleString { data }),
             None => Err(Error::NotComplete),
         }
     }
 
-    fn parse_simple_error(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+    fn parse_simple_error(
+        &self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
-            Some(data) => Ok(Frame::SimpleError { data, }),
+            Some(data) => Ok(Frame::SimpleError { data }),
             None => Err(Error::NotComplete),
         }
     }
 
-    fn parse_integer(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+    fn parse_integer(
+        &self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
             Some(number_str) => {
                 let option = ParseIntegerOptions::new();
@@ -88,29 +114,56 @@ impl<'a> Ast<'a> {
         }
     }
 
-    fn parse_bulk_string(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+    fn parse_bulk_string(
+        &self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
             Some(data) => Ok(Frame::Bulkstring { data }),
             None => Err(Error::NotComplete),
         }
     }
 
-    fn parse_bulk_error(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+    fn parse_bulk_error(
+        &self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
             Some(data) => Ok(Frame::BulkError { data }),
             None => Err(Error::NotComplete),
         }
     }
 
-    fn parse_verbatim_string(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
-        let encode_type = self.input.get(start_position..start_position + 3).ok_or( Error::NotComplete)?;
-        let encode_type = encode_type.try_into().map_err(|_|Error::Unknown)?;
-        let data = self.input.get(start_position + 3..end_position).ok_or(Error::NotComplete)?;
-        Ok(Frame::VerbatimString { data: (encode_type, data) })
+    fn parse_verbatim_string(
+        &self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
+        let encode_type = self
+            .input
+            .get(start_position..start_position + 3)
+            .ok_or(Error::NotComplete)?;
+        let encode_type = encode_type.try_into().map_err(|_| Error::Unknown)?;
+        let data = self
+            .input
+            .get(start_position + 3..end_position)
+            .ok_or(Error::NotComplete)?;
+        Ok(Frame::VerbatimString {
+            data: (encode_type, data),
+        })
     }
 
-    fn parse_array(&mut self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
-        let len_bytes = self.input.get(start_position..end_position).ok_or( Error::NotComplete)?;
+    fn parse_array(
+        &mut self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
+        let len_bytes = self
+            .input
+            .get(start_position..end_position)
+            .ok_or(Error::NotComplete)?;
         let options = ParseIntegerOptions::new();
         let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
 
@@ -121,41 +174,47 @@ impl<'a> Ast<'a> {
         while let Some(len) = queue.pop_front() {
             for _ in 0..len {
                 match self.lexer.next() {
-                    Some(Ok(tag)) => {
-                        match tag.tag_type {
-                            TagType::Array => {
-                                let len_bytes = self.input.get(start_position..end_position).ok_or( Error::NotComplete)?;
-                                let options = ParseIntegerOptions::new();
-                                let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
-                                queue.push_back(len);
-                            }
-                            TagType::Double => {
-                                let frame = self.parse_double(tag.start_position, tag.end_position)?;
-                                data.push(frame);
-                            }
-                            TagType::SimpleString => {
-                                let frame = self.parse_simple_string(tag.start_position, tag.end_position)?;
-                                data.push(frame);
-                            }
-                            TagType::SimpleError => {
-                                let frame = self.parse_simple_error(tag.start_position, tag.end_position)?;
-                                data.push(frame);
-                            }
-                            TagType::BulkString => {
-                                let frame = self.parse_bulk_string(tag.start_position, tag.end_position)?;
-                                data.push(frame);
-                            }
-                            TagType::BulkError => {
-                                let frame = self.parse_bulk_error(tag.start_position, tag.end_position)?;
-                                data.push(frame);
-                            }
-                            TagType::Integer => {
-                                let frame = self.parse_integer(tag.start_position, tag.end_position)?;
-                                data.push(frame);
-                            }
-                            _=> todo!(),
+                    Some(Ok(tag)) => match tag.tag_type {
+                        TagType::Array => {
+                            let len_bytes = self
+                                .input
+                                .get(start_position..end_position)
+                                .ok_or(Error::NotComplete)?;
+                            let options = ParseIntegerOptions::new();
+                            let len =
+                                parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
+                            queue.push_back(len);
                         }
-                    }
+                        TagType::Double => {
+                            let frame = self.parse_double(tag.start_position, tag.end_position)?;
+                            data.push(frame);
+                        }
+                        TagType::SimpleString => {
+                            let frame =
+                                self.parse_simple_string(tag.start_position, tag.end_position)?;
+                            data.push(frame);
+                        }
+                        TagType::SimpleError => {
+                            let frame =
+                                self.parse_simple_error(tag.start_position, tag.end_position)?;
+                            data.push(frame);
+                        }
+                        TagType::BulkString => {
+                            let frame =
+                                self.parse_bulk_string(tag.start_position, tag.end_position)?;
+                            data.push(frame);
+                        }
+                        TagType::BulkError => {
+                            let frame =
+                                self.parse_bulk_error(tag.start_position, tag.end_position)?;
+                            data.push(frame);
+                        }
+                        TagType::Integer => {
+                            let frame = self.parse_integer(tag.start_position, tag.end_position)?;
+                            data.push(frame);
+                        }
+                        _ => todo!(),
+                    },
                     Some(Err(e)) => {
                         return Err(e);
                     }
@@ -166,7 +225,7 @@ impl<'a> Ast<'a> {
             }
         }
 
-        Ok(Frame::Array{ data })
+        Ok(Frame::Array { data })
     }
 }
 
@@ -186,10 +245,15 @@ mod test {
         let data = b"*3\r\n$3\r\nfoo\r\n$3\r\nbar\r\n$3\r\nbaz\r\n";
         let mut ast = Ast::new(data);
 
-        assert_eq!(ast.next().unwrap().unwrap(), Frame::Array{ data: vec![
-            Frame::Bulkstring { data: b"foo" },
-            Frame::Bulkstring{ data: b"bar" },
-            Frame::Bulkstring{ data: b"baz" },
-        ]});
+        assert_eq!(
+            ast.next().unwrap().unwrap(),
+            Frame::Array {
+                data: vec![
+                    Frame::Bulkstring { data: b"foo" },
+                    Frame::Bulkstring { data: b"bar" },
+                    Frame::Bulkstring { data: b"baz" },
+                ]
+            }
+        );
     }
 }

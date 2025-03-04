@@ -3,7 +3,11 @@ use criterion::{
 };
 use lexical::to_string;
 use rand::random;
-use rresp::{encode, EncodeLen, v2::{Frame, V2}};
+use rresp::{
+    encode,
+    v2::{Frame, V2},
+    EncodeLen,
+};
 
 fn v2_encode(c: &mut Criterion) {
     let mut group = c.benchmark_group("v2_encode");

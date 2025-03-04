@@ -1,4 +1,4 @@
-use lexical::{parse_with_options, ParseIntegerOptions, format::STANDARD};
+use lexical::{format::STANDARD, parse_with_options, ParseIntegerOptions};
 use memchr::Memchr;
 
 use crate::Error;
@@ -33,10 +33,13 @@ impl<'a> Lexer<'a> {
             }
         };
         Some(end_position)
-
     }
 
-    fn match_tag(&mut self, start_position: usize, mut end_position: usize) -> Option<ScanResult<Tag>> {
+    fn match_tag(
+        &mut self,
+        start_position: usize,
+        mut end_position: usize,
+    ) -> Option<ScanResult<Tag>> {
         let first = self.input.get(start_position)?;
         let mut start_position = start_position + 1;
 
@@ -45,15 +48,15 @@ impl<'a> Lexer<'a> {
             b'+' => {
                 self.last_position = end_position + 2;
                 TagType::SimpleString
-            },
+            }
             b'-' => {
                 self.last_position = end_position + 2;
                 TagType::SimpleError
-            },
+            }
             b':' => {
-                self.last_position =  end_position + 2;
+                self.last_position = end_position + 2;
                 TagType::Integer
-            },
+            }
             b'$' => {
                 let follow = self.input.get(start_position..end_position)?;
                 let options = ParseIntegerOptions::new();
@@ -73,10 +76,10 @@ impl<'a> Lexer<'a> {
                         self.last_position = end_position + 2;
                         dbg!(&self.last_position);
                         TagType::BulkString
-                    },
+                    }
                     Err(e) => return Some(Err(Error::from(e))),
                 }
-            },
+            }
             b'*' => {
                 let follow = self.input.get(start_position..end_position)?;
                 let options = ParseIntegerOptions::new();
@@ -88,23 +91,23 @@ impl<'a> Lexer<'a> {
                     Ok(_) => TagType::Array,
                     Err(e) => return Some(Err(Error::from(e))),
                 }
-            },
+            }
             b'_' => {
                 self.last_position = end_position + 2;
                 TagType::Null
-            },
+            }
             b'#' => {
                 self.last_position = end_position + 2;
                 TagType::Boolean
-            },
+            }
             b',' => {
                 self.last_position = end_position + 2;
                 TagType::Double
-            },
+            }
             b'(' => {
                 self.last_position = end_position + 2;
                 TagType::BigNumber
-            },
+            }
             b'!' => {
                 let follow = self.input.get(start_position..end_position)?;
                 let options = ParseIntegerOptions::new();
@@ -123,14 +126,14 @@ impl<'a> Lexer<'a> {
                     Err(e) => return Some(Err(Error::from(e))),
                 }
             }
-            b'~'=> {
+            b'~' => {
                 self.last_position = end_position + 2;
                 TagType::Set
-            },
+            }
             b'%' => {
                 self.last_position = end_position + 2;
                 TagType::Map
-            },
+            }
             b'=' => {
                 let follow = self.input.get(start_position..end_position)?;
                 let options = ParseIntegerOptions::new();
@@ -153,7 +156,6 @@ impl<'a> Lexer<'a> {
         };
 
         Some(Ok(Tag {
-            
             tag_type,
             start_position,
             end_position,
@@ -182,7 +184,14 @@ mod test {
         let input = b"+hello\r\n";
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::SimpleString, start_position: 1, end_position: 6});
+        assert_eq!(
+            lexer.next().unwrap().unwrap(),
+            Tag {
+                tag_type: TagType::SimpleString,
+                start_position: 1,
+                end_position: 6
+            }
+        );
     }
 
     #[test]
@@ -190,7 +199,14 @@ mod test {
         let input = b"-err\r\n";
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::SimpleError, start_position: 1, end_position: 4});
+        assert_eq!(
+            lexer.next().unwrap().unwrap(),
+            Tag {
+                tag_type: TagType::SimpleError,
+                start_position: 1,
+                end_position: 4
+            }
+        );
     }
 
     #[test]
@@ -198,7 +214,14 @@ mod test {
         let input = b"$5\r\nhello\r\n";
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::BulkString, start_position: 4, end_position: 9});
+        assert_eq!(
+            lexer.next().unwrap().unwrap(),
+            Tag {
+                tag_type: TagType::BulkString,
+                start_position: 4,
+                end_position: 9
+            }
+        );
     }
 
     #[test]
@@ -206,17 +229,38 @@ mod test {
         let input = b":1\r\n";
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::Integer, start_position: 1, end_position: 2});
+        assert_eq!(
+            lexer.next().unwrap().unwrap(),
+            Tag {
+                tag_type: TagType::Integer,
+                start_position: 1,
+                end_position: 2
+            }
+        );
 
         let input = b":-1\r\n";
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::Integer, start_position: 1, end_position: 3});
+        assert_eq!(
+            lexer.next().unwrap().unwrap(),
+            Tag {
+                tag_type: TagType::Integer,
+                start_position: 1,
+                end_position: 3
+            }
+        );
 
         let input = b":+1\r\n";
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::Integer, start_position: 1, end_position: 3});
+        assert_eq!(
+            lexer.next().unwrap().unwrap(),
+            Tag {
+                tag_type: TagType::Integer,
+                start_position: 1,
+                end_position: 3
+            }
+        );
     }
 
     #[test]
@@ -224,7 +268,14 @@ mod test {
         let input = b"#t\r\n";
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::Boolean, start_position: 1, end_position: 2});
+        assert_eq!(
+            lexer.next().unwrap().unwrap(),
+            Tag {
+                tag_type: TagType::Boolean,
+                start_position: 1,
+                end_position: 2
+            }
+        );
     }
 
     #[test]
@@ -232,7 +283,14 @@ mod test {
         let input = b"(0123456789\r\n";
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::BigNumber, start_position: 1, end_position: 11});
+        assert_eq!(
+            lexer.next().unwrap().unwrap(),
+            Tag {
+                tag_type: TagType::BigNumber,
+                start_position: 1,
+                end_position: 11
+            }
+        );
     }
 
     #[test]
@@ -240,6 +298,13 @@ mod test {
         let input = b"!5\r\nerror\r\n";
         let mut lexer = Lexer::new(input);
 
-        assert_eq!(lexer.next().unwrap().unwrap(), Tag {tag_type: TagType::BulkError, start_position: 4, end_position: 9});
+        assert_eq!(
+            lexer.next().unwrap().unwrap(),
+            Tag {
+                tag_type: TagType::BulkError,
+                start_position: 4,
+                end_position: 9
+            }
+        );
     }
 }

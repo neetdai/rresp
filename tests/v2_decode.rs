@@ -1,4 +1,8 @@
-use rresp::{decode, Error, v2::{Frame, V2}};
+use rresp::{
+    decode,
+    v2::{Frame, V2},
+    Error,
+};
 
 #[test]
 fn decode_v2() {

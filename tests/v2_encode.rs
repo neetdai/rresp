@@ -1,4 +1,8 @@
-use rresp::{encode, Error, v2::{Frame, V2}};
+use rresp::{
+    encode,
+    v2::{Frame, V2},
+    Error,
+};
 
 #[test]
 fn test_encode_simple_string() {
