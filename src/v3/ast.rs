@@ -168,60 +168,12 @@ impl<'a> Ast<'a> {
         let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
 
         let mut data = Vec::with_capacity(len);
-        let mut queue = VecDeque::new();
-        queue.push_back(len);
 
-        while let Some(len) = queue.pop_front() {
-            for _ in 0..len {
-                match self.lexer.next() {
-                    Some(Ok(tag)) => match tag.tag_type {
-                        TagType::Array => {
-                            let len_bytes = self
-                                .input
-                                .get(start_position..end_position)
-                                .ok_or(Error::NotComplete)?;
-                            let options = ParseIntegerOptions::new();
-                            let len =
-                                parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
-                            queue.push_back(len);
-                        }
-                        TagType::Double => {
-                            let frame = self.parse_double(tag.start_position, tag.end_position)?;
-                            data.push(frame);
-                        }
-                        TagType::SimpleString => {
-                            let frame =
-                                self.parse_simple_string(tag.start_position, tag.end_position)?;
-                            data.push(frame);
-                        }
-                        TagType::SimpleError => {
-                            let frame =
-                                self.parse_simple_error(tag.start_position, tag.end_position)?;
-                            data.push(frame);
-                        }
-                        TagType::BulkString => {
-                            let frame =
-                                self.parse_bulk_string(tag.start_position, tag.end_position)?;
-                            data.push(frame);
-                        }
-                        TagType::BulkError => {
-                            let frame =
-                                self.parse_bulk_error(tag.start_position, tag.end_position)?;
-                            data.push(frame);
-                        }
-                        TagType::Integer => {
-                            let frame = self.parse_integer(tag.start_position, tag.end_position)?;
-                            data.push(frame);
-                        }
-                        _ => todo!(),
-                    },
-                    Some(Err(e)) => {
-                        return Err(e);
-                    }
-                    None => {
-                        return Err(Error::NotComplete);
-                    }
-                }
+        for _ in 0..len {
+            match self.next_frame() {
+                Some(Ok(frame)) => data.push(frame),
+                Some(Err(err)) => return Err(err),
+                None => return Err(Error::NotComplete),
             }
         }
 
@@ -255,5 +207,17 @@ mod test {
                 ]
             }
         );
+
+        let data = b"*1\r\n*1\r\n$3\r\nfoo\r\n";
+        let mut ast = Ast::new(data);
+
+        assert_eq!(
+            ast.next().unwrap().unwrap(),
+            Frame::Array {
+                data: vec![
+                    Frame::Array { data: vec![Frame::Bulkstring { data: b"foo" }] }
+                ]
+            }
+        )
     }
 }

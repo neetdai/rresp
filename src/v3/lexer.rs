@@ -27,7 +27,6 @@ impl<'a> Lexer<'a> {
     fn walk(&mut self) -> Option<usize> {
         let end_position = loop {
             let end_position = self.scanner.next()?;
-            dbg!(&end_position);
             if let Some(b'\n') = self.input.get(end_position + 1) {
                 break end_position;
             }
@@ -43,7 +42,6 @@ impl<'a> Lexer<'a> {
         let first = self.input.get(start_position)?;
         let mut start_position = start_position + 1;
 
-        dbg!(&first);
         let tag_type = match first {
             b'+' => {
                 self.last_position = end_position + 2;
@@ -65,16 +63,13 @@ impl<'a> Lexer<'a> {
                     Ok(-1) => TagType::Null,
                     Ok(len) => {
                         start_position = end_position + 2;
-                        dbg!(&start_position);
                         end_position = self.scanner.next()?;
-                        dbg!(&end_position);
                         let len = len as usize;
                         if len > end_position - start_position {
                             return Some(Err(Error::from(Error::InvalidBulkString)));
                         }
 
                         self.last_position = end_position + 2;
-                        dbg!(&self.last_position);
                         TagType::BulkString
                     }
                     Err(e) => return Some(Err(Error::from(e))),
@@ -169,9 +164,6 @@ impl<'a> Iterator for Lexer<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let end_position = self.walk()?;
         let tag_result = self.match_tag(self.last_position, end_position);
-        // self.last_position = end_position + 2;
-        dbg!(&self.last_position);
-
         tag_result
     }
 }
