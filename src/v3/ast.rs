@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 use lexical::{format::STANDARD, parse_with_options, ParseFloatOptions, ParseIntegerOptions};
 
@@ -43,6 +43,8 @@ impl<'a> Ast<'a> {
                     Some(self.parse_verbatim_string(tag.start_position, tag.end_position))
                 }
                 TagType::Array => Some(self.parse_array(tag.start_position, tag.end_position)),
+                TagType::Map => Some(self.parse_map(tag.start_position, tag.end_position)),
+                TagType::Set => Some(self.parse_set(tag.start_position, tag.end_position)),
                 _ => todo!(),
             },
             Some(Err(err)) => Some(Err(err)),
@@ -179,6 +181,57 @@ impl<'a> Ast<'a> {
 
         Ok(Frame::Array { data })
     }
+
+    fn parse_map(&mut self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+        let len_bytes = self.input.get(start_position..end_position).ok_or(Error::NotComplete)?;
+        let options = ParseIntegerOptions::new();
+        let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
+
+        let mut data = HashMap::new();
+
+        for _ in 0..len {
+            let key = match self.next_frame() {
+                Some(Ok(Frame::Map { data })) => return Err(Error::InvalidMap),
+                Some(Ok(Frame::Set { data })) => return Err(Error::InvalidMap),
+                Some(Ok(frame)) => frame,
+                Some(Err(err)) => return Err(err),
+                None => return Err(Error::NotComplete),
+            };
+
+            let value = match self.next_frame() {
+                Some(Ok(frame)) => frame,
+                Some(Err(err)) => return Err(err),
+                None => return Err(Error::NotComplete),
+            };
+
+            data.insert(key, value);
+        }
+
+        Ok(Frame::Map { data })
+    }
+
+    fn parse_set(&mut self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+        let len_bytes = self.input.get(start_position..end_position).ok_or(Error::NotComplete)?;
+        let options = ParseIntegerOptions::new();
+        let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
+
+        let mut data = HashSet::new();
+
+        for _ in 0..len {
+            let value = match self.next_frame() {
+                Some(Ok(Frame::Map { data })) => return Err(Error::InvalidSet),
+                Some(Ok(Frame::Set { data })) => return Err(Error::InvalidSet),
+                Some(Ok(frame)) => frame,
+                Some(Err(err)) => return Err(err),
+                None => return Err(Error::NotComplete),
+            };
+
+            data.insert(value);
+        }
+
+        Ok(Frame::Set { data })
+    }
+
 }
 
 impl<'a> Iterator for Ast<'a> {
@@ -219,5 +272,27 @@ mod test {
                 ]
             }
         )
+    }
+
+    #[test]
+    fn test_map() {
+        let input = b"%1\r\n$3\r\nbar\r\n$3\r\nbat\r\n";
+        let mut ast = Ast::new(input);
+
+        assert_eq!(
+            ast.next().unwrap().unwrap(),
+            Frame::Map {
+                data: HashMap::from([(Frame::Bulkstring { data: b"bar" }, Frame::Bulkstring { data: b"bat" })]),
+            }
+        );
+
+        let input = b"%1\r\n%1\r\n$3\r\nbar\r\n$3\r\nbat\r\n";
+        let mut ast = Ast::new(input);
+
+        assert_eq!(
+            ast.next().unwrap(),
+            Err(Error::InvalidMap)
+        );
+
     }
 }

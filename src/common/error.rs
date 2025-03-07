@@ -23,4 +23,10 @@ pub enum Error {
 
     #[error("invalid boolean")]
     InvalidBoolean,
+
+    #[error("invalid map")]
+    InvalidMap,
+
+    #[error("invalid set")]
+    InvalidSet,
 }
