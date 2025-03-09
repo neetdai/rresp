@@ -1,4 +1,7 @@
-use std::{collections::{HashMap, HashSet}, hash::Hash};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hash,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum Frame<'a> {
@@ -14,6 +17,8 @@ pub enum Frame<'a> {
     Array { data: Vec<Frame<'a>> },
     Map { data: HashMap<Frame<'a>, Frame<'a>> },
     Set { data: HashSet<Frame<'a>> },
+    Push { data: Vec<Frame<'a>> },
+    BigNumber { data: &'a [u8] },
 }
 
 impl<'a> Hash for Frame<'a> {
@@ -28,11 +33,11 @@ impl<'a> Hash for Frame<'a> {
             Self::Bulkstring { data } => data.hash(state),
             Self::BulkError { data } => data.hash(state),
             Self::VerbatimString { data } => data.hash(state),
+            Self::BigNumber { data } => data.hash(state),
             Self::Array { data } => data.hash(state),
             _ => panic!("Invalid RESP3 data type to use as hash key."),
         };
     }
 }
 
-impl<'a> Eq for Frame<'a> {
-}
+impl<'a> Eq for Frame<'a> {}

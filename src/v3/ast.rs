@@ -42,10 +42,13 @@ impl<'a> Ast<'a> {
                 TagType::VerbatimString => {
                     Some(self.parse_verbatim_string(tag.start_position, tag.end_position))
                 }
+                TagType::BigNumber => {
+                    Some(self.parse_big_number(tag.start_position, tag.end_position))
+                }
                 TagType::Array => Some(self.parse_array(tag.start_position, tag.end_position)),
                 TagType::Map => Some(self.parse_map(tag.start_position, tag.end_position)),
                 TagType::Set => Some(self.parse_set(tag.start_position, tag.end_position)),
-                _ => todo!(),
+                TagType::Push => Some(self.parse_push(tag.start_position, tag.end_position)),
             },
             Some(Err(err)) => Some(Err(err)),
             None => None,
@@ -182,12 +185,19 @@ impl<'a> Ast<'a> {
         Ok(Frame::Array { data })
     }
 
-    fn parse_map(&mut self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
-        let len_bytes = self.input.get(start_position..end_position).ok_or(Error::NotComplete)?;
+    fn parse_map(
+        &mut self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
+        let len_bytes = self
+            .input
+            .get(start_position..end_position)
+            .ok_or(Error::NotComplete)?;
         let options = ParseIntegerOptions::new();
         let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
 
-        let mut data = HashMap::new();
+        let mut data = HashMap::with_capacity(len);
 
         for _ in 0..len {
             let key = match self.next_frame() {
@@ -210,12 +220,19 @@ impl<'a> Ast<'a> {
         Ok(Frame::Map { data })
     }
 
-    fn parse_set(&mut self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
-        let len_bytes = self.input.get(start_position..end_position).ok_or(Error::NotComplete)?;
+    fn parse_set(
+        &mut self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
+        let len_bytes = self
+            .input
+            .get(start_position..end_position)
+            .ok_or(Error::NotComplete)?;
         let options = ParseIntegerOptions::new();
         let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
 
-        let mut data = HashSet::new();
+        let mut data = HashSet::with_capacity(len);
 
         for _ in 0..len {
             let value = match self.next_frame() {
@@ -232,6 +249,40 @@ impl<'a> Ast<'a> {
         Ok(Frame::Set { data })
     }
 
+    fn parse_push(
+        &mut self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
+        let len_bytes = self
+            .input
+            .get(start_position..end_position)
+            .ok_or(Error::NotComplete)?;
+        let options = ParseIntegerOptions::new();
+        let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
+
+        let mut data = Vec::with_capacity(len);
+        for _ in 0..len {
+            match self.next_frame() {
+                Some(Ok(frame)) => data.push(frame),
+                Some(Err(err)) => return Err(err),
+                None => return Err(Error::NotComplete),
+            }
+        }
+
+        Ok(Frame::Push { data })
+    }
+
+    fn parse_big_number(
+        &self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<Frame<'a>, Error> {
+        match self.input.get(start_position..end_position) {
+            Some(data) => Ok(Frame::BigNumber { data }),
+            None => Err(Error::NotComplete),
+        }
+    }
 }
 
 impl<'a> Iterator for Ast<'a> {
@@ -267,9 +318,9 @@ mod test {
         assert_eq!(
             ast.next().unwrap().unwrap(),
             Frame::Array {
-                data: vec![
-                    Frame::Array { data: vec![Frame::Bulkstring { data: b"foo" }] }
-                ]
+                data: vec![Frame::Array {
+                    data: vec![Frame::Bulkstring { data: b"foo" }]
+                }]
             }
         )
     }
@@ -282,17 +333,16 @@ mod test {
         assert_eq!(
             ast.next().unwrap().unwrap(),
             Frame::Map {
-                data: HashMap::from([(Frame::Bulkstring { data: b"bar" }, Frame::Bulkstring { data: b"bat" })]),
+                data: HashMap::from([(
+                    Frame::Bulkstring { data: b"bar" },
+                    Frame::Bulkstring { data: b"bat" }
+                )]),
             }
         );
 
         let input = b"%1\r\n%1\r\n$3\r\nbar\r\n$3\r\nbat\r\n";
         let mut ast = Ast::new(input);
 
-        assert_eq!(
-            ast.next().unwrap(),
-            Err(Error::InvalidMap)
-        );
-
+        assert_eq!(ast.next().unwrap(), Err(Error::InvalidMap));
     }
 }

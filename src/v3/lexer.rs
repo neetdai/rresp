@@ -163,8 +163,7 @@ impl<'a> Iterator for Lexer<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let end_position = self.walk()?;
-        let tag_result = self.match_tag(self.last_position, end_position);
-        tag_result
+        self.match_tag(self.last_position, end_position)
     }
 }
 
