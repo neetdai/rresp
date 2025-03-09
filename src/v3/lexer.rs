@@ -24,6 +24,10 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    pub(crate) fn remaining(&self) -> usize {
+        self.last_position
+    }
+
     fn walk(&mut self) -> Option<usize> {
         let end_position = loop {
             let end_position = self.scanner.next()?;
