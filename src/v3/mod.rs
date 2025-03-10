@@ -45,7 +45,7 @@ impl ParseIter for V3 {
     type Iter<'a> = DecodeIter<'a>;
 
     fn parse_iter<'a>(input: &'a [u8]) -> Self::Iter<'a> {
-        DecodeIter{
+        DecodeIter {
             ast: Ast::new(input),
         }
     }
