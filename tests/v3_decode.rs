@@ -55,4 +55,32 @@ fn decode_v3() {
             data: data
         }, 21)
     );
+
+    let input = b"_\r\n";
+    let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
+    assert_eq!(
+        (frame, remaining),
+        (Frame::Null {data: ()}, 3)
+    );
+
+    let input = b"#t\r\n";
+    let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
+    assert_eq!(
+        (frame, remaining),
+        (Frame::Boolean {data: true}, 4)
+    );
+
+    let input = b"#f\r\n";
+    let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
+    assert_eq!(
+        (frame, remaining),
+        (Frame::Boolean {data: false}, 4)
+    );
+
+    let input = b",123.45\r\n";
+    let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
+    assert_eq!(
+        (frame, remaining),
+        (Frame::Double {data: 123.45}, 9)
+    );
 }
