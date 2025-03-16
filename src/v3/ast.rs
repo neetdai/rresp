@@ -25,7 +25,20 @@ impl<'a> Ast<'a> {
     }
 
     fn next_frame(&mut self) -> Option<Result<Frame<'a>, Error>> {
-        match self.lexer.next() {
+        let mut peek = self.lexer.peekable();
+        let attribute = {
+            if let Some(Ok(tag)) = peek.peek() {
+                if let TagType::Attribute = tag.tag_type {
+                    Some(self.parse_attribute(tag.start_position, tag.end_position)?)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        };
+
+        match peek.next() {
             Some(Ok(tag)) => match tag.tag_type {
                 TagType::Boolean => Some(self.parse_boolean(tag.start_position, tag.end_position)),
                 TagType::SimpleString => {
@@ -53,6 +66,7 @@ impl<'a> Ast<'a> {
                 TagType::Map => Some(self.parse_map(tag.start_position, tag.end_position)),
                 TagType::Set => Some(self.parse_set(tag.start_position, tag.end_position)),
                 TagType::Push => Some(self.parse_push(tag.start_position, tag.end_position)),
+                TagType::Attribute => Some(Err(Error::InvalidBulkString)),
             },
             Some(Err(err)) => Some(Err(err)),
             None => None,
@@ -286,6 +300,39 @@ impl<'a> Ast<'a> {
             Some(data) => Ok(Frame::BigNumber { data }),
             None => Err(Error::NotComplete),
         }
+    }
+
+    fn parse_attribute(
+        &mut self,
+        start_position: usize,
+        end_position: usize,
+    ) -> Result<HashMap<Frame<'a>, Frame<'a>>, Error> {
+        let len_bytes = self
+            .input
+            .get(start_position..end_position)
+            .ok_or(Error::NotComplete)?;
+        let options = ParseIntegerOptions::new();
+        let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
+
+        let mut data = HashMap::with_capacity(len);
+        for _ in 0..len {
+            let key = match self.next_frame() {
+                Some(Ok(Frame::Map { data })) => return Err(Error::InvalidMap),
+                Some(Ok(Frame::Set { data })) => return Err(Error::InvalidMap),
+                Some(Ok(frame)) => frame,
+                Some(Err(err)) => return Err(err),
+                None => return Err(Error::NotComplete),
+            };
+
+            let value = match self.next_frame() {
+                Some(Ok(frame)) => frame,
+                Some(Err(err)) => return Err(err),
+                None => return Err(Error::NotComplete),
+            };
+            data.insert(key, value);
+        }
+
+        Ok(data)
     }
 }
 

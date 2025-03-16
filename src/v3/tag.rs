@@ -14,6 +14,7 @@ pub(crate) enum TagType {
     Map,
     Set,
     Push,
+    Attribute,
 }
 
 #[derive(Debug, PartialEq)]
