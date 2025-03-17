@@ -1,3 +1,5 @@
+use std::iter::Peekable;
+
 use lexical::{format::STANDARD, parse_with_options, ParseIntegerOptions};
 use memchr::Memchr;
 
@@ -10,7 +12,7 @@ type ScanResult<T> = Result<T, Error>;
 #[derive(Debug)]
 pub(crate) struct Lexer<'a> {
     input: &'a [u8],
-    scanner: Memchr<'a>,
+    scanner: Peekable<Memchr<'a>>,
     last_position: usize,
 }
 
@@ -19,7 +21,7 @@ impl<'a> Lexer<'a> {
         let scanner = Memchr::new(b'\r', input);
         Self {
             input,
-            scanner,
+            scanner: scanner.peekable(),
             last_position: 0,
         }
     }
@@ -187,6 +189,10 @@ impl<'a> Iterator for Lexer<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let end_position = self.walk()?;
         self.match_tag(self.last_position, end_position)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.last_position, Some(self.input.len()))
     }
 }
 

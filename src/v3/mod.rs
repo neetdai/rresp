@@ -25,7 +25,8 @@ impl<'a> Iterator for DecodeIter<'a> {
 
 impl Remaining for DecodeIter<'_> {
     fn remaining(&self) -> usize {
-        self.ast.remaining()
+        let (remaining, _) = self.ast.size_hint();
+        remaining
     }
 }
 
@@ -35,7 +36,7 @@ impl Parser for V3 {
     fn parse<'a>(input: &'a [u8]) -> Result<Option<Self::Frame<'a>>, crate::Error> {
         let mut ast = Ast::new(input);
         let frame_result = ast.next().transpose();
-        let remaining = ast.remaining();
+        let (remaining, _) = ast.size_hint();
         frame_result.map(|op| op.map(|frame| (frame, remaining)))
     }
 }

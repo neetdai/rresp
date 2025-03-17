@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::{collections::{BTreeMap, HashMap, HashSet, VecDeque}, iter::Peekable};
 
 use lexical::{format::STANDARD, parse_with_options, ParseFloatOptions, ParseIntegerOptions};
 
@@ -9,62 +9,63 @@ use super::{frame::Frame, lexer::Lexer, tag::TagType};
 #[derive(Debug)]
 pub(crate) struct Ast<'a> {
     input: &'a [u8],
-    lexer: Lexer<'a>,
+    lexer: Peekable<Lexer<'a>>,
 }
 
 impl<'a> Ast<'a> {
     pub(crate) fn new(input: &'a [u8]) -> Self {
+        let lexer = Lexer::new(input);
+        let peek = lexer.peekable();
         Self {
             input,
-            lexer: Lexer::new(input),
+            lexer: peek,
         }
     }
 
-    pub(crate) fn remaining(&self) -> usize {
-        self.lexer.remaining()
-    }
-
     fn next_frame(&mut self) -> Option<Result<Frame<'a>, Error>> {
-        let mut peek = self.lexer.peekable();
         let attribute = {
-            if let Some(Ok(tag)) = peek.peek() {
-                if let TagType::Attribute = tag.tag_type {
-                    Some(self.parse_attribute(tag.start_position, tag.end_position)?)
-                } else {
-                    None
+            if let Some(Ok(tag)) = self.lexer.next_if(|result| {
+                match result {
+                    Ok(tag) if tag.tag_type == TagType::Attribute => true,
+                    _ => false,
+                }
+            }) {
+                match self.parse_attribute(tag.start_position, tag.end_position) {
+                    Ok(attr) => Some(attr),
+                    Err(err) => return Some(Err(err)),
                 }
             } else {
                 None
             }
         };
 
-        match peek.next() {
+        match self.lexer.next() {
             Some(Ok(tag)) => match tag.tag_type {
-                TagType::Boolean => Some(self.parse_boolean(tag.start_position, tag.end_position)),
+                TagType::Boolean => Some(self.parse_boolean(tag.start_position, tag.end_position, attribute)),
                 TagType::SimpleString => {
-                    Some(self.parse_simple_string(tag.start_position, tag.end_position))
+                    Some(self.parse_simple_string(tag.start_position, tag.end_position, attribute))
                 }
                 TagType::SimpleError => {
-                    Some(self.parse_simple_error(tag.start_position, tag.end_position))
+                    Some(self.parse_simple_error(tag.start_position, tag.end_position, attribute))
                 }
                 TagType::Null => Some(Ok(Frame::Null { data: () })),
-                TagType::Integer => Some(self.parse_integer(tag.start_position, tag.end_position)),
-                TagType::Double => Some(self.parse_double(tag.start_position, tag.end_position)),
+                TagType::Integer => Some(self.parse_integer(tag.start_position, tag.end_position, attribute)),
+                TagType::Double => Some(self.parse_double(tag.start_position, tag.end_position, attribute)),
                 TagType::BulkString => {
-                    Some(self.parse_bulk_string(tag.start_position, tag.end_position))
+                    Some(self.parse_bulk_string(tag.start_position, tag.end_position, attribute))
                 }
                 TagType::BulkError => {
-                    Some(self.parse_bulk_error(tag.start_position, tag.end_position))
+                    Some(self.parse_bulk_error(tag.start_position, tag.end_position, attribute))
                 }
                 TagType::VerbatimString => {
-                    Some(self.parse_verbatim_string(tag.start_position, tag.end_position))
+                    Some(self.parse_verbatim_string(tag.start_position, tag.end_position, attribute))
                 }
                 TagType::BigNumber => {
-                    Some(self.parse_big_number(tag.start_position, tag.end_position))
+                    Some(self.parse_big_number(tag.start_position, tag.end_position, attribute))
                 }
-                TagType::Array => Some(self.parse_array(tag.start_position, tag.end_position)),
-                TagType::Map => Some(self.parse_map(tag.start_position, tag.end_position)),
-                TagType::Set => Some(self.parse_set(tag.start_position, tag.end_position)),
+                TagType::Array => Some(self.parse_array(tag.start_position, tag.end_position, attribute)),
+                TagType::Map => Some(self.parse_map(tag.start_position, tag.end_position, attribute)),
+                TagType::Set => Some(self.parse_set(tag.start_position, tag.end_position, attribute)),
                 TagType::Push => Some(self.parse_push(tag.start_position, tag.end_position)),
                 TagType::Attribute => Some(Err(Error::InvalidBulkString)),
             },
@@ -77,14 +78,15 @@ impl<'a> Ast<'a> {
         &self,
         start_position: usize,
         end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         if end_position - start_position != 1 {
             return Err(Error::InvalidBoolean);
         }
 
         match self.input.get(start_position) {
-            Some(b't') => Ok(Frame::Boolean { data: true }),
-            Some(b'f') => Ok(Frame::Boolean { data: false }),
+            Some(b't') => Ok(Frame::Boolean { data: true, attributes }),
+            Some(b'f') => Ok(Frame::Boolean { data: false, attributes }),
             _ => Err(Error::InvalidBoolean),
         }
     }
@@ -93,9 +95,10 @@ impl<'a> Ast<'a> {
         &self,
         start_position: usize,
         end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
-            Some(data) => Ok(Frame::SimpleString { data }),
+            Some(data) => Ok(Frame::SimpleString { data, attributes }),
             None => Err(Error::NotComplete),
         }
     }
@@ -104,9 +107,10 @@ impl<'a> Ast<'a> {
         &self,
         start_position: usize,
         end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
-            Some(data) => Ok(Frame::SimpleError { data }),
+            Some(data) => Ok(Frame::SimpleError { data, attributes }),
             None => Err(Error::NotComplete),
         }
     }
@@ -115,23 +119,24 @@ impl<'a> Ast<'a> {
         &self,
         start_position: usize,
         end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
             Some(number_str) => {
                 let option = ParseIntegerOptions::new();
                 let number = parse_with_options::<isize, &[u8], STANDARD>(number_str, &option)?;
-                Ok(Frame::Integer { data: number })
+                Ok(Frame::Integer { data: number, attributes })
             }
             None => Err(Error::NotComplete),
         }
     }
 
-    fn parse_double(&self, start_position: usize, end_position: usize) -> Result<Frame<'a>, Error> {
+    fn parse_double(&self, start_position: usize, end_position: usize, attributes: Option<HashMap<Frame<'a>, Frame<'a>>>) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
             Some(number_str) => {
                 let option = ParseFloatOptions::new();
                 let number = parse_with_options::<f64, &[u8], STANDARD>(number_str, &option)?;
-                Ok(Frame::Double { data: number })
+                Ok(Frame::Double { data: number, attributes })
             }
             None => Err(Error::NotComplete),
         }
@@ -141,9 +146,10 @@ impl<'a> Ast<'a> {
         &self,
         start_position: usize,
         end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>
     ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
-            Some(data) => Ok(Frame::Bulkstring { data }),
+            Some(data) => Ok(Frame::Bulkstring { data, attributes }),
             None => Err(Error::NotComplete),
         }
     }
@@ -152,9 +158,10 @@ impl<'a> Ast<'a> {
         &self,
         start_position: usize,
         end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>
     ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
-            Some(data) => Ok(Frame::BulkError { data }),
+            Some(data) => Ok(Frame::BulkError { data, attributes }),
             None => Err(Error::NotComplete),
         }
     }
@@ -163,6 +170,7 @@ impl<'a> Ast<'a> {
         &self,
         start_position: usize,
         end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         let encode_type = self
             .input
@@ -175,6 +183,7 @@ impl<'a> Ast<'a> {
             .ok_or(Error::NotComplete)?;
         Ok(Frame::VerbatimString {
             data: (encode_type, data),
+            attributes
         })
     }
 
@@ -182,6 +191,7 @@ impl<'a> Ast<'a> {
         &mut self,
         start_position: usize,
         end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         let len_bytes = self
             .input
@@ -200,13 +210,14 @@ impl<'a> Ast<'a> {
             }
         }
 
-        Ok(Frame::Array { data })
+        Ok(Frame::Array { data, attributes })
     }
 
     fn parse_map(
         &mut self,
         start_position: usize,
         end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         let len_bytes = self
             .input
@@ -219,8 +230,8 @@ impl<'a> Ast<'a> {
 
         for _ in 0..len {
             let key = match self.next_frame() {
-                Some(Ok(Frame::Map { data })) => return Err(Error::InvalidMap),
-                Some(Ok(Frame::Set { data })) => return Err(Error::InvalidMap),
+                Some(Ok(Frame::Map { data, attributes })) => return Err(Error::InvalidMap),
+                Some(Ok(Frame::Set { data ,attributes})) => return Err(Error::InvalidMap),
                 Some(Ok(frame)) => frame,
                 Some(Err(err)) => return Err(err),
                 None => return Err(Error::NotComplete),
@@ -235,13 +246,14 @@ impl<'a> Ast<'a> {
             data.insert(key, value);
         }
 
-        Ok(Frame::Map { data })
+        Ok(Frame::Map { data, attributes })
     }
 
     fn parse_set(
         &mut self,
         start_position: usize,
         end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         let len_bytes = self
             .input
@@ -254,8 +266,8 @@ impl<'a> Ast<'a> {
 
         for _ in 0..len {
             let value = match self.next_frame() {
-                Some(Ok(Frame::Map { data })) => return Err(Error::InvalidSet),
-                Some(Ok(Frame::Set { data })) => return Err(Error::InvalidSet),
+                Some(Ok(Frame::Map { data,attributes })) => return Err(Error::InvalidSet),
+                Some(Ok(Frame::Set { data ,attributes})) => return Err(Error::InvalidSet),
                 Some(Ok(frame)) => frame,
                 Some(Err(err)) => return Err(err),
                 None => return Err(Error::NotComplete),
@@ -264,7 +276,7 @@ impl<'a> Ast<'a> {
             data.insert(value);
         }
 
-        Ok(Frame::Set { data })
+        Ok(Frame::Set { data,attributes })
     }
 
     fn parse_push(
@@ -295,9 +307,10 @@ impl<'a> Ast<'a> {
         &self,
         start_position: usize,
         end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
-            Some(data) => Ok(Frame::BigNumber { data }),
+            Some(data) => Ok(Frame::BigNumber { data, attributes }),
             None => Err(Error::NotComplete),
         }
     }
@@ -317,8 +330,8 @@ impl<'a> Ast<'a> {
         let mut data = HashMap::with_capacity(len);
         for _ in 0..len {
             let key = match self.next_frame() {
-                Some(Ok(Frame::Map { data })) => return Err(Error::InvalidMap),
-                Some(Ok(Frame::Set { data })) => return Err(Error::InvalidMap),
+                Some(Ok(Frame::Map { data, attributes })) => return Err(Error::InvalidMap),
+                Some(Ok(Frame::Set { data ,attributes})) => return Err(Error::InvalidMap),
                 Some(Ok(frame)) => frame,
                 Some(Err(err)) => return Err(err),
                 None => return Err(Error::NotComplete),
@@ -342,6 +355,10 @@ impl<'a> Iterator for Ast<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         self.next_frame()
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.lexer.size_hint()
+    }
 }
 
 mod test {
@@ -356,10 +373,11 @@ mod test {
             ast.next().unwrap().unwrap(),
             Frame::Array {
                 data: vec![
-                    Frame::Bulkstring { data: b"foo" },
-                    Frame::Bulkstring { data: b"bar" },
-                    Frame::Bulkstring { data: b"baz" },
-                ]
+                    Frame::Bulkstring { data: b"foo", attributes: None },
+                    Frame::Bulkstring { data: b"bar", attributes: None },
+                    Frame::Bulkstring { data: b"baz", attributes: None },
+                ],
+                attributes: None,
             }
         );
 
@@ -370,8 +388,10 @@ mod test {
             ast.next().unwrap().unwrap(),
             Frame::Array {
                 data: vec![Frame::Array {
-                    data: vec![Frame::Bulkstring { data: b"foo" }]
-                }]
+                    data: vec![Frame::Bulkstring { data: b"foo", attributes: None }],
+                    attributes: None,
+                }],
+                attributes: None,
             }
         )
     }
@@ -385,9 +405,10 @@ mod test {
             ast.next().unwrap().unwrap(),
             Frame::Map {
                 data: HashMap::from([(
-                    Frame::Bulkstring { data: b"bar" },
-                    Frame::Bulkstring { data: b"bat" }
+                    Frame::Bulkstring { data: b"bar", attributes: None},
+                    Frame::Bulkstring { data: b"bat", attributes:None }
                 )]),
+                attributes: None,
             }
         );
 
