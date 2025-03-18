@@ -9,19 +9,19 @@ use rresp::{
 fn decode_v3() {
     let input = b"+OK\r\n";
     let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
-    assert_eq!((frame, remaining), (Frame::SimpleString { data: b"OK" }, 5));
+    assert_eq!((frame, remaining), (Frame::SimpleString { data: b"OK", attributes: None }, 5));
 
     let input = b"-ERR\r\n";
     let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
-    assert_eq!((frame, remaining), (Frame::SimpleError { data: b"ERR" }, 6));
+    assert_eq!((frame, remaining), (Frame::SimpleError { data: b"ERR", attributes: None }, 6));
 
     let input = b":1\r\n";
     let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
-    assert_eq!((frame, remaining), (Frame::Integer { data: 1 }, 4));
+    assert_eq!((frame, remaining), (Frame::Integer { data: 1, attributes: None }, 4));
 
     let input = b":-1\r\n";
     let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
-    assert_eq!((frame, remaining), (Frame::Integer { data: -1 }, 5));
+    assert_eq!((frame, remaining), (Frame::Integer { data: -1, attributes: None }, 5));
 
     let input = b"*6\r\n:10\r\n:-1\r\n$5\r\nhello\r\n+world\r\n-err\r\n*1\r\n+ok\r\n";
     let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
@@ -30,15 +30,17 @@ fn decode_v3() {
         (
             Frame::Array {
                 data: vec![
-                    Frame::Integer { data: 10 },
-                    Frame::Integer { data: -1 },
-                    Frame::Bulkstring { data: b"hello" },
-                    Frame::SimpleString { data: b"world" },
-                    Frame::SimpleError { data: b"err" },
+                    Frame::Integer { data: 10, attributes: None },
+                    Frame::Integer { data: -1, attributes: None },
+                    Frame::Bulkstring { data: b"hello", attributes: None },
+                    Frame::SimpleString { data: b"world", attributes: None },
+                    Frame::SimpleError { data: b"err", attributes: None },
                     Frame::Array {
-                        data: vec![Frame::SimpleString { data: b"ok" }]
+                        data: vec![Frame::SimpleString { data: b"ok", attributes: None }],
+                        attributes: None,
                     }
-                ]
+                ],
+                attributes: None,
             },
             48
         )
@@ -48,11 +50,12 @@ fn decode_v3() {
     let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
     
     let mut data = HashMap::new();
-    data.insert(Frame::Bulkstring { data: b"bar" }, Frame::Array { data: vec![Frame::Integer { data: 1 }] });
+    data.insert(Frame::Bulkstring { data: b"bar", attributes: None }, Frame::Array { data: vec![Frame::Integer { data: 1, attributes: None }], attributes: None });
     assert_eq!(
         (frame, remaining),
         (Frame::Map {
-            data: data
+            data: data,
+            attributes: None,
         }, 21)
     );
 
@@ -67,20 +70,28 @@ fn decode_v3() {
     let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
     assert_eq!(
         (frame, remaining),
-        (Frame::Boolean {data: true}, 4)
+        (Frame::Boolean {data: true, attributes: None}, 4)
     );
 
     let input = b"#f\r\n";
     let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
     assert_eq!(
         (frame, remaining),
-        (Frame::Boolean {data: false}, 4)
+        (Frame::Boolean {data: false, attributes: None}, 4)
     );
 
     let input = b",123.45\r\n";
     let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
     assert_eq!(
         (frame, remaining),
-        (Frame::Double {data: 123.45}, 9)
+        (Frame::Double {data: 123.45, attributes: None}, 9)
+    );
+
+    let input = b"|1\r\n+key\r\n+value\r\n+main\r\n";
+    let (frame, remaining) = decode::<V3>(input.as_slice()).unwrap().unwrap();
+    let attributes = HashMap::from([(Frame::SimpleString { data: b"key", attributes: None }, Frame::SimpleString { data: b"value", attributes: None })]);
+    assert_eq!(
+        (frame, remaining),
+        (Frame::SimpleString { data: b"main", attributes: Some(attributes) }, 25)
     );
 }

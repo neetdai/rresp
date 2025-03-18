@@ -62,23 +62,8 @@ impl<'a> Lexer<'a> {
                 TagType::Integer
             }
             b'|' => {
-                let follow = self.input.get(start_position..end_position)?;
-                let options = ParseIntegerOptions::new();
-                let len_result = parse_with_options::<usize, _, STANDARD>(follow, &options);
-                match len_result {
-                    Ok(len) => {
-                        start_position = end_position + 2;
-                        end_position = self.scanner.next()?;
-                        let len = len as usize;
-                        if len > end_position - start_position {
-                            return Some(Err(Error::from(Error::InvalidBulkString)));
-                        }
-
-                        self.last_position = end_position + 2;
-                        TagType::Attribute
-                    }
-                    Err(e) => return Some(Err(Error::from(e))),
-                }
+                self.last_position = end_position + 2;
+                TagType::Attribute
             }
             b'$' => {
                 let follow = self.input.get(start_position..end_position)?;
