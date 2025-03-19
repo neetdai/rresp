@@ -107,9 +107,13 @@ fn v3_decode(c: &mut Criterion) {
 
     for (array_tree, len) in array_tree_params.0 {
         group.throughput(Throughput::Elements(len as u64));
-        group.bench_with_input(BenchmarkId::new("decode_array_tree", len), &array_tree, |b, i| {
-            b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
-        });
+        group.bench_with_input(
+            BenchmarkId::new("decode_array_tree", len),
+            &array_tree,
+            |b, i| {
+                b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
+            },
+        );
     }
 }
 

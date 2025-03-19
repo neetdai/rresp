@@ -7,20 +7,60 @@ type Attributes<'a> = HashMap<Frame<'a>, Frame<'a>>;
 
 #[derive(Debug, PartialEq)]
 pub enum Frame<'a> {
-    SimpleString { data: &'a [u8], attributes: Option<Attributes<'a>> },
-    SimpleError { data: &'a [u8], attributes: Option<Attributes<'a>> },
-    Boolean { data: bool, attributes: Option<Attributes<'a>> },
-    Null { data: () },
-    Integer { data: isize, attributes: Option<Attributes<'a>>},
-    Double { data: f64, attributes: Option<Attributes<'a>> },
-    Bulkstring { data: &'a [u8], attributes: Option<Attributes<'a>>},
-    BulkError { data: &'a [u8], attributes: Option<Attributes<'a>> },
-    VerbatimString { data: ([u8; 3], &'a [u8]),  attributes: Option<Attributes<'a>> },
-    Array { data: Vec<Frame<'a>>, attributes: Option<Attributes<'a>> },
-    Map { data: HashMap<Frame<'a>, Frame<'a>>, attributes: Option<Attributes<'a>> },
-    Set { data: HashSet<Frame<'a>>, attributes: Option<Attributes<'a>> },
-    Push { data: Vec<Frame<'a>> },
-    BigNumber { data: &'a [u8], attributes: Option<Attributes<'a>> },
+    SimpleString {
+        data: &'a [u8],
+        attributes: Option<Attributes<'a>>,
+    },
+    SimpleError {
+        data: &'a [u8],
+        attributes: Option<Attributes<'a>>,
+    },
+    Boolean {
+        data: bool,
+        attributes: Option<Attributes<'a>>,
+    },
+    Null {
+        data: (),
+    },
+    Integer {
+        data: isize,
+        attributes: Option<Attributes<'a>>,
+    },
+    Double {
+        data: f64,
+        attributes: Option<Attributes<'a>>,
+    },
+    Bulkstring {
+        data: &'a [u8],
+        attributes: Option<Attributes<'a>>,
+    },
+    BulkError {
+        data: &'a [u8],
+        attributes: Option<Attributes<'a>>,
+    },
+    VerbatimString {
+        data: ([u8; 3], &'a [u8]),
+        attributes: Option<Attributes<'a>>,
+    },
+    Array {
+        data: Vec<Frame<'a>>,
+        attributes: Option<Attributes<'a>>,
+    },
+    Map {
+        data: HashMap<Frame<'a>, Frame<'a>>,
+        attributes: Option<Attributes<'a>>,
+    },
+    Set {
+        data: HashSet<Frame<'a>>,
+        attributes: Option<Attributes<'a>>,
+    },
+    Push {
+        data: Vec<Frame<'a>>,
+    },
+    BigNumber {
+        data: &'a [u8],
+        attributes: Option<Attributes<'a>>,
+    },
 }
 
 impl<'a> Hash for Frame<'a> {
@@ -30,7 +70,7 @@ impl<'a> Hash for Frame<'a> {
             Self::SimpleError { data, attributes } => data.hash(state),
             Self::Boolean { data, attributes } => data.hash(state),
             Self::Null { data } => data.hash(state),
-            Self::Integer { data,attributes } => data.hash(state),
+            Self::Integer { data, attributes } => data.hash(state),
             Self::Double { data, attributes } => data.to_be_bytes().hash(state),
             Self::Bulkstring { data, attributes } => data.hash(state),
             Self::BulkError { data, attributes } => data.hash(state),

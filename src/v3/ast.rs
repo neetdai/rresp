@@ -1,4 +1,7 @@
-use std::{collections::{BTreeMap, HashMap, HashSet, VecDeque}, iter::Peekable};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet, VecDeque},
+    iter::Peekable,
+};
 
 use lexical::{format::STANDARD, parse_with_options, ParseFloatOptions, ParseIntegerOptions};
 
@@ -16,19 +19,14 @@ impl<'a> Ast<'a> {
     pub(crate) fn new(input: &'a [u8]) -> Self {
         let lexer = Lexer::new(input);
         let peek = lexer.peekable();
-        Self {
-            input,
-            lexer: peek,
-        }
+        Self { input, lexer: peek }
     }
 
     fn next_frame(&mut self) -> Option<Result<Frame<'a>, Error>> {
         let attribute = {
-            if let Some(Ok(tag)) = self.lexer.next_if(|result| {
-                match result {
-                    Ok(tag) if tag.tag_type == TagType::Attribute => true,
-                    _ => false,
-                }
+            if let Some(Ok(tag)) = self.lexer.next_if(|result| match result {
+                Ok(tag) if tag.tag_type == TagType::Attribute => true,
+                _ => false,
             }) {
                 match self.parse_attribute(tag.start_position, tag.end_position) {
                     Ok(attr) => Some(attr),
@@ -41,7 +39,9 @@ impl<'a> Ast<'a> {
 
         match self.lexer.next() {
             Some(Ok(tag)) => match tag.tag_type {
-                TagType::Boolean => Some(self.parse_boolean(tag.start_position, tag.end_position, attribute)),
+                TagType::Boolean => {
+                    Some(self.parse_boolean(tag.start_position, tag.end_position, attribute))
+                }
                 TagType::SimpleString => {
                     Some(self.parse_simple_string(tag.start_position, tag.end_position, attribute))
                 }
@@ -49,23 +49,35 @@ impl<'a> Ast<'a> {
                     Some(self.parse_simple_error(tag.start_position, tag.end_position, attribute))
                 }
                 TagType::Null => Some(Ok(Frame::Null { data: () })),
-                TagType::Integer => Some(self.parse_integer(tag.start_position, tag.end_position, attribute)),
-                TagType::Double => Some(self.parse_double(tag.start_position, tag.end_position, attribute)),
+                TagType::Integer => {
+                    Some(self.parse_integer(tag.start_position, tag.end_position, attribute))
+                }
+                TagType::Double => {
+                    Some(self.parse_double(tag.start_position, tag.end_position, attribute))
+                }
                 TagType::BulkString => {
                     Some(self.parse_bulk_string(tag.start_position, tag.end_position, attribute))
                 }
                 TagType::BulkError => {
                     Some(self.parse_bulk_error(tag.start_position, tag.end_position, attribute))
                 }
-                TagType::VerbatimString => {
-                    Some(self.parse_verbatim_string(tag.start_position, tag.end_position, attribute))
-                }
+                TagType::VerbatimString => Some(self.parse_verbatim_string(
+                    tag.start_position,
+                    tag.end_position,
+                    attribute,
+                )),
                 TagType::BigNumber => {
                     Some(self.parse_big_number(tag.start_position, tag.end_position, attribute))
                 }
-                TagType::Array => Some(self.parse_array(tag.start_position, tag.end_position, attribute)),
-                TagType::Map => Some(self.parse_map(tag.start_position, tag.end_position, attribute)),
-                TagType::Set => Some(self.parse_set(tag.start_position, tag.end_position, attribute)),
+                TagType::Array => {
+                    Some(self.parse_array(tag.start_position, tag.end_position, attribute))
+                }
+                TagType::Map => {
+                    Some(self.parse_map(tag.start_position, tag.end_position, attribute))
+                }
+                TagType::Set => {
+                    Some(self.parse_set(tag.start_position, tag.end_position, attribute))
+                }
                 TagType::Push => Some(self.parse_push(tag.start_position, tag.end_position)),
                 TagType::Attribute => Some(Err(Error::InvalidBulkString)),
             },
@@ -85,8 +97,14 @@ impl<'a> Ast<'a> {
         }
 
         match self.input.get(start_position) {
-            Some(b't') => Ok(Frame::Boolean { data: true, attributes }),
-            Some(b'f') => Ok(Frame::Boolean { data: false, attributes }),
+            Some(b't') => Ok(Frame::Boolean {
+                data: true,
+                attributes,
+            }),
+            Some(b'f') => Ok(Frame::Boolean {
+                data: false,
+                attributes,
+            }),
             _ => Err(Error::InvalidBoolean),
         }
     }
@@ -125,18 +143,29 @@ impl<'a> Ast<'a> {
             Some(number_str) => {
                 let option = ParseIntegerOptions::new();
                 let number = parse_with_options::<isize, &[u8], STANDARD>(number_str, &option)?;
-                Ok(Frame::Integer { data: number, attributes })
+                Ok(Frame::Integer {
+                    data: number,
+                    attributes,
+                })
             }
             None => Err(Error::NotComplete),
         }
     }
 
-    fn parse_double(&self, start_position: usize, end_position: usize, attributes: Option<HashMap<Frame<'a>, Frame<'a>>>) -> Result<Frame<'a>, Error> {
+    fn parse_double(
+        &self,
+        start_position: usize,
+        end_position: usize,
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
+    ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
             Some(number_str) => {
                 let option = ParseFloatOptions::new();
                 let number = parse_with_options::<f64, &[u8], STANDARD>(number_str, &option)?;
-                Ok(Frame::Double { data: number, attributes })
+                Ok(Frame::Double {
+                    data: number,
+                    attributes,
+                })
             }
             None => Err(Error::NotComplete),
         }
@@ -146,7 +175,7 @@ impl<'a> Ast<'a> {
         &self,
         start_position: usize,
         end_position: usize,
-        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
             Some(data) => Ok(Frame::Bulkstring { data, attributes }),
@@ -158,7 +187,7 @@ impl<'a> Ast<'a> {
         &self,
         start_position: usize,
         end_position: usize,
-        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>
+        attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
             Some(data) => Ok(Frame::BulkError { data, attributes }),
@@ -183,7 +212,7 @@ impl<'a> Ast<'a> {
             .ok_or(Error::NotComplete)?;
         Ok(Frame::VerbatimString {
             data: (encode_type, data),
-            attributes
+            attributes,
         })
     }
 
@@ -202,15 +231,150 @@ impl<'a> Ast<'a> {
 
         let mut data = Vec::with_capacity(len);
 
-        for _ in 0..len {
-            match self.next_frame() {
-                Some(Ok(frame)) => data.push(frame),
+        let mut stack = Vec::new();
+        stack.push((data, len));
+
+        while let Some((mut current_vec, current_len)) = stack.pop() {
+            if current_len == 0 {
+                if stack.is_empty() {
+                    return Ok(Frame::Array {
+                        data: current_vec,
+                        attributes,
+                    });
+                } else if let Some((parent_vec, parent_len)) = stack.last_mut() {
+                    parent_vec.push(Frame::Array {
+                        data: current_vec,
+                        attributes: None,
+                    });
+                    *parent_len -= 1;
+                    continue;
+                }
+            }
+
+            let attribute = {
+                if let Some(Ok(tag)) = self.lexer.next_if(|result| match result {
+                    Ok(tag) if tag.tag_type == TagType::Attribute => true,
+                    _ => false,
+                }) {
+                    match self.parse_attribute(tag.start_position, tag.end_position) {
+                        Ok(attr) => Some(attr),
+                        Err(err) => return Err(err),
+                    }
+                } else {
+                    None
+                }
+            };
+
+            match self.lexer.next() {
+                Some(Ok(tag)) => match tag.tag_type {
+                    TagType::Boolean => {
+                        let frame =
+                            self.parse_boolean(tag.start_position, tag.end_position, attribute)?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::SimpleString => {
+                        let frame = self.parse_simple_string(
+                            tag.start_position,
+                            tag.end_position,
+                            attribute,
+                        )?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::SimpleError => {
+                        let frame = self.parse_simple_error(
+                            tag.start_position,
+                            tag.end_position,
+                            attribute,
+                        )?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::Null => {
+                        let frame = Frame::Null { data: () };
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::Integer => {
+                        let frame =
+                            self.parse_integer(tag.start_position, tag.end_position, attribute)?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::Double => {
+                        let frame =
+                            self.parse_double(tag.start_position, tag.end_position, attribute)?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::BulkString => {
+                        let frame = self.parse_bulk_string(
+                            tag.start_position,
+                            tag.end_position,
+                            attribute,
+                        )?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::BulkError => {
+                        let frame =
+                            self.parse_bulk_error(tag.start_position, tag.end_position, attribute)?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::VerbatimString => {
+                        let frame = self.parse_verbatim_string(
+                            tag.start_position,
+                            tag.end_position,
+                            attribute,
+                        )?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::BigNumber => {
+                        let frame =
+                            self.parse_big_number(tag.start_position, tag.end_position, attribute)?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::Array => {
+                        let new_len_bytes = self
+                            .input
+                            .get(tag.start_position..tag.end_position)
+                            .ok_or(Error::NotComplete)?;
+                        let new_len =
+                            parse_with_options::<usize, &[u8], STANDARD>(new_len_bytes, &options)?;
+
+                        let new_array = Vec::with_capacity(new_len);
+                        stack.push((current_vec, current_len));
+                        stack.push((new_array, new_len));
+                    }
+                    TagType::Map => {
+                        let frame =
+                            self.parse_map(tag.start_position, tag.end_position, attribute)?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::Set => {
+                        let frame =
+                            self.parse_set(tag.start_position, tag.end_position, attribute)?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::Push => {
+                        let frame = self.parse_push(tag.start_position, tag.end_position)?;
+                        current_vec.push(frame);
+                        stack.push((current_vec, current_len - 1));
+                    }
+                    TagType::Attribute => return Err(Error::InvalidBulkString),
+                },
                 Some(Err(err)) => return Err(err),
                 None => return Err(Error::NotComplete),
             }
         }
 
-        Ok(Frame::Array { data, attributes })
+        Err(Error::NotComplete)
     }
 
     fn parse_map(
@@ -231,7 +395,7 @@ impl<'a> Ast<'a> {
         for _ in 0..len {
             let key = match self.next_frame() {
                 Some(Ok(Frame::Map { data, attributes })) => return Err(Error::InvalidMap),
-                Some(Ok(Frame::Set { data ,attributes})) => return Err(Error::InvalidMap),
+                Some(Ok(Frame::Set { data, attributes })) => return Err(Error::InvalidMap),
                 Some(Ok(frame)) => frame,
                 Some(Err(err)) => return Err(err),
                 None => return Err(Error::NotComplete),
@@ -266,8 +430,8 @@ impl<'a> Ast<'a> {
 
         for _ in 0..len {
             let value = match self.next_frame() {
-                Some(Ok(Frame::Map { data,attributes })) => return Err(Error::InvalidSet),
-                Some(Ok(Frame::Set { data ,attributes})) => return Err(Error::InvalidSet),
+                Some(Ok(Frame::Map { data, attributes })) => return Err(Error::InvalidSet),
+                Some(Ok(Frame::Set { data, attributes })) => return Err(Error::InvalidSet),
                 Some(Ok(frame)) => frame,
                 Some(Err(err)) => return Err(err),
                 None => return Err(Error::NotComplete),
@@ -276,7 +440,7 @@ impl<'a> Ast<'a> {
             data.insert(value);
         }
 
-        Ok(Frame::Set { data,attributes })
+        Ok(Frame::Set { data, attributes })
     }
 
     fn parse_push(
@@ -331,7 +495,7 @@ impl<'a> Ast<'a> {
         for _ in 0..len {
             let key = match self.next_frame() {
                 Some(Ok(Frame::Map { data, attributes })) => return Err(Error::InvalidMap),
-                Some(Ok(Frame::Set { data ,attributes})) => return Err(Error::InvalidMap),
+                Some(Ok(Frame::Set { data, attributes })) => return Err(Error::InvalidMap),
                 Some(Ok(frame)) => frame,
                 Some(Err(err)) => return Err(err),
                 None => return Err(Error::NotComplete),
@@ -373,9 +537,18 @@ mod test {
             ast.next().unwrap().unwrap(),
             Frame::Array {
                 data: vec![
-                    Frame::Bulkstring { data: b"foo", attributes: None },
-                    Frame::Bulkstring { data: b"bar", attributes: None },
-                    Frame::Bulkstring { data: b"baz", attributes: None },
+                    Frame::Bulkstring {
+                        data: b"foo",
+                        attributes: None
+                    },
+                    Frame::Bulkstring {
+                        data: b"bar",
+                        attributes: None
+                    },
+                    Frame::Bulkstring {
+                        data: b"baz",
+                        attributes: None
+                    },
                 ],
                 attributes: None,
             }
@@ -388,7 +561,10 @@ mod test {
             ast.next().unwrap().unwrap(),
             Frame::Array {
                 data: vec![Frame::Array {
-                    data: vec![Frame::Bulkstring { data: b"foo", attributes: None }],
+                    data: vec![Frame::Bulkstring {
+                        data: b"foo",
+                        attributes: None
+                    }],
                     attributes: None,
                 }],
                 attributes: None,
@@ -405,8 +581,14 @@ mod test {
             ast.next().unwrap().unwrap(),
             Frame::Map {
                 data: HashMap::from([(
-                    Frame::Bulkstring { data: b"bar", attributes: None},
-                    Frame::Bulkstring { data: b"bat", attributes:None }
+                    Frame::Bulkstring {
+                        data: b"bar",
+                        attributes: None
+                    },
+                    Frame::Bulkstring {
+                        data: b"bat",
+                        attributes: None
+                    }
                 )]),
                 attributes: None,
             }
