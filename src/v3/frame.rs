@@ -3,6 +3,8 @@ use std::{
     hash::Hash,
 };
 
+use crate::EncodeLen;
+
 type Attributes<'a> = HashMap<Frame<'a>, Frame<'a>>;
 
 #[derive(Debug, PartialEq)]
@@ -83,3 +85,18 @@ impl<'a> Hash for Frame<'a> {
 }
 
 impl<'a> Eq for Frame<'a> {}
+
+impl<'a> EncodeLen for Frame<'a> {
+    fn encode_len(&self) -> usize {
+        match self {
+            Self::SimpleString { data, attributes } => {
+                let attributes_len = attributes.iter()
+                    .fold(0usize, |(prev_len, (key, value))| {
+                        prev_len + key.encode_len() + value.encode_len()
+                    });
+                data.len() + 3 + attributes_len
+            }
+            _ => 0,
+        }
+    }
+}
