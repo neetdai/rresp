@@ -3,6 +3,8 @@ use std::{
     hash::Hash,
 };
 
+use lexical::to_string;
+
 use crate::EncodeLen;
 
 type Attributes<'a> = HashMap<Frame<'a>, Frame<'a>>;
@@ -86,15 +88,80 @@ impl<'a> Hash for Frame<'a> {
 
 impl<'a> Eq for Frame<'a> {}
 
+impl<'a> Frame<'a> {
+    fn attributes_len(attributes: &Option<Attributes<'a>>) -> usize {
+        if let Some(attributes) = attributes {
+            attributes.iter()
+                .fold(0, |prev_len, (key, value)| {
+                    prev_len + key.encode_len() + value.encode_len()
+                })
+        } else {
+            0
+        }
+    }
+}
+
 impl<'a> EncodeLen for Frame<'a> {
     fn encode_len(&self) -> usize {
         match self {
             Self::SimpleString { data, attributes } => {
-                let attributes_len = attributes.iter()
-                    .fold(0usize, |(prev_len, (key, value))| {
-                        prev_len + key.encode_len() + value.encode_len()
-                    });
+                let attributes_len = Self::attributes_len(attributes);
                 data.len() + 3 + attributes_len
+            }
+            Self::SimpleError { data, attributes } => {
+                let attributes_len = Self::attributes_len(attributes);
+                data.len() + 3 + attributes_len
+            }
+            Self::Boolean { data, attributes } => {
+                let attributes_len = Self::attributes_len(attributes);
+                4 + attributes_len
+            }
+            Self::Null { data } => {
+                3
+            }
+            Self::Integer { data, attributes } => {
+                let attributes_len = Self::attributes_len(attributes);
+                let text = to_string(*data);
+                text.len() + 3 + attributes_len
+            }
+            Self::Double { data, attributes } => {
+                let attributes_len = Self::attributes_len(attributes);
+                let text = to_string(*data);
+                text.len() + 3 + attributes_len
+            }
+            Self::Bulkstring { data, attributes } => {
+                let attributes_len = Self::attributes_len(attributes);
+                let text = to_string(data.len());
+                text.len() + data.len() + 5 + attributes_len
+            }
+            Self::BulkError { data, attributes } => {
+                let attributes_len = Self::attributes_len(attributes);
+                let text = to_string(data.len());
+                text.len() + data.len() + 5 + attributes_len
+            }
+            Self::VerbatimString { data, attributes } => {
+                let attributes_len = Self::attributes_len(attributes);
+                let text = to_string(data.1.len());
+                text.len() + data.1.len() + 8 + attributes_len
+            }
+            Self::Array { data, attributes } => {
+                let attributes_len = Self::attributes_len(attributes);
+                let text = to_string(data.len());
+                text.len() + data.iter().map(|frame| frame.encode_len()).sum::<usize>() + 5 + attributes_len
+            }
+            Self::Map { data, attributes } => {
+                let attributes_len = Self::attributes_len(attributes);
+                let text = to_string(data.len());
+                text.len() + data.iter().map(|(key, value)| key.encode_len() + value.encode_len()).sum::<usize>() + 5 + attributes_len
+            }
+            Self::Set { data, attributes } => {
+                let attributes_len = Self::attributes_len(attributes);
+                let text = to_string(data.len());
+                text.len() + data.iter().map(|frame| frame.encode_len()).sum::<usize>() + 5 + attributes_len
+            }
+            Self::Push { data } => {
+                let text = to_string(data.len());
+                text.len() + data.iter().map(|frame| frame.encode_len()).sum::<usize>() + 5
             }
             _ => 0,
         }
