@@ -7,7 +7,7 @@ pub(super) use ast::Ast;
 pub use frame::Frame;
 pub(super) use lexer::Lexer;
 
-use crate::{Encoder, Error, ParseIter, Parser, Remaining};
+use crate::{EncodeWithWriter, Encoder, Error, ParseIter, Parser, Remaining};
 
 pub struct V3;
 
@@ -49,5 +49,23 @@ impl ParseIter for V3 {
         DecodeIter {
             ast: Ast::new(input),
         }
+    }
+}
+
+impl Encoder for V3 {
+    type Frame<'a> = Frame<'a>;
+    type Item = Vec<u8>;
+    fn encode(frame: Self::Frame<'_>) -> Result<Self::Item, Error> {
+        Ok(frame.encode())
+    }
+}
+
+impl EncodeWithWriter for V3 {
+    type Frame<'a> = Frame<'a>;
+    
+    fn encode_with_writer<W>(frame: Self::Frame<'_>, writer: &mut W) -> std::io::Result<()>
+        where
+            W: std::io::Write {
+        frame.encode_with_writer(writer)
     }
 }

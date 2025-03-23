@@ -92,8 +92,10 @@ impl<'a> Eq for Frame<'a> {}
 impl<'a> Frame<'a> {
     fn attributes_len(attributes: &Option<Attributes<'a>>) -> usize {
         if let Some(attributes) = attributes {
+            let attributes_len = attributes.len();
+            let attributes_len_text = to_string(attributes_len);
             attributes.iter()
-                .fold(0, |prev_len, (key, value)| {
+                .fold(3 + attributes_len_text.len(), |prev_len, (key, value)| {
                     prev_len + key.encode_len() + value.encode_len()
                 })
         } else {
@@ -106,7 +108,7 @@ impl<'a> Frame<'a> {
             let attributes_len = attributes.len();
             let attributes_len_text = to_string(attributes_len);
             writer.write(b"|")?;
-            writer.write(attributes_len_text.as_bytes());
+            writer.write(attributes_len_text.as_bytes())?;
             writer.write(b"\r\n")?;
             attributes.iter()
                 .try_for_each(|(key, value)| {
@@ -121,6 +123,12 @@ impl<'a> Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
+    pub fn encode(&self) -> Vec<u8> {
+        let mut buffer = Vec::with_capacity(self.encode_len());
+        self.encode_with_writer(&mut buffer);
+        buffer
+    }
+    
     pub fn encode_with_writer<W>(&self, writer: &mut W) -> IoResult<()>
     where
         W: Write,
