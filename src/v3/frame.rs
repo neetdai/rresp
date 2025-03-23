@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
+    io::{Result as IoResult, Write},
 };
 
 use lexical::to_string;
@@ -98,6 +99,157 @@ impl<'a> Frame<'a> {
         } else {
             0
         }
+    }
+
+    fn attibutes_encode<W>(attributes: &Option<Attributes<'a>>, writer: &mut W) -> IoResult<()> where W: Write {
+        if let Some(attributes) = attributes {
+            let attributes_len = attributes.len();
+            let attributes_len_text = to_string(attributes_len);
+            writer.write(b"|")?;
+            writer.write(attributes_len_text.as_bytes());
+            writer.write(b"\r\n")?;
+            attributes.iter()
+                .try_for_each(|(key, value)| {
+                    key.encode_with_writer(writer)?;
+                    value.encode_with_writer(writer)?;
+                    Ok(())
+                })
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl<'a> Frame<'a> {
+    pub fn encode_with_writer<W>(&self, writer: &mut W) -> IoResult<()>
+    where
+        W: Write,
+    {
+        match self {
+            Self::SimpleString { data, attributes } => {
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b"+")?;
+                writer.write(&data)?;
+                writer.write(b"\r\n")?;
+            },
+            Self::SimpleError { data, attributes } => {
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b"-")?;
+                writer.write(&data)?;
+                writer.write(b"\r\n")?;
+            },
+            Self::Boolean { data, attributes } => {
+                let bool_text = if *data {
+                    b"t"
+                } else {
+                    b"f"
+                };
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b"#")?;
+                writer.write(bool_text)?;
+                writer.write(b"\r\n")?;
+            },
+            Self::Null { data: _ } => {
+                writer.write(b"_\r\n")?;
+            },
+            Self::Integer { data, attributes } => {
+                let text = to_string(*data);
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b":")?;
+                writer.write(text.as_bytes())?;
+                writer.write(b"\r\n")?;
+            },
+            Self::Double { data, attributes } => {
+                let text = to_string(*data);
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b",")?;
+                writer.write(text.as_bytes())?;
+                writer.write(b"\r\n")?;
+            },
+            Self::Bulkstring { data, attributes } => {
+                let data_len = data.len();
+                let data_len_text = to_string(data_len);
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b"$")?;
+                writer.write(data_len_text.as_bytes())?;
+                writer.write(b"\r\n")?;
+                writer.write(data)?;
+                writer.write(b"\r\n")?;
+            },
+            Self::BulkError { data, attributes } => {
+                let data_len = data.len();
+                let data_len_text = to_string(data_len);
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b"!")?;
+                writer.write(data_len_text.as_bytes())?;
+                writer.write(b"\r\n")?;
+                writer.write(data)?;
+                writer.write(b"\r\n")?;
+            }
+            Self::BigNumber { data, attributes } => {
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b"(")?;
+                writer.write(data)?;
+                writer.write(b"\r\n")?;
+            }
+            Self::VerbatimString { data, attributes } => {
+                let data_len = data.1.len();
+                let data_len_text = to_string(data_len + 4);
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b"=")?;
+                writer.write(data_len_text.as_bytes())?;
+                writer.write(data.0.as_slice())?;
+                writer.write(b":")?;
+                writer.write(data.1)?;
+                writer.write(b"\r\n")?;
+            }
+            Self::Array { data, attributes } => {
+                let data_len = data.len();
+                let data_len_text = to_string(data_len);
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b"*")?;
+                writer.write(data_len_text.as_bytes())?;
+                writer.write(b"\r\n")?;
+                for frame in data {
+                    frame.encode_with_writer(writer)?;
+                }
+            }
+            Self::Map { data, attributes } => {
+                let data_len = data.len();
+                let data_len_text = to_string(data_len);
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b"%")?;
+                writer.write(data_len_text.as_bytes())?;
+                writer.write(b"\r\n")?;
+                for (key, value) in data {
+                    key.encode_with_writer(writer)?;
+                    value.encode_with_writer(writer)?;
+                }
+            }
+            Self::Set { data, attributes } => {
+                let data_len = data.len();
+                let data_len_text = to_string(data_len);
+                Self::attibutes_encode(attributes, writer)?;
+                writer.write(b"~")?;
+                writer.write(data_len_text.as_bytes())?;
+                writer.write(b"\r\n")?;
+                for frame in data {
+                    frame.encode_with_writer(writer)?;
+                }
+            }
+            Self::Push { data } => {
+                let data_len = data.len();
+                let data_len_text = to_string(data_len);
+                writer.write(b">")?;
+                writer.write(data_len_text.as_bytes())?;
+                writer.write(b"\r\n")?;
+                for frame in data {
+                    frame.encode_with_writer(writer)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
