@@ -62,10 +62,11 @@ impl Encoder for V3 {
 
 impl EncodeWithWriter for V3 {
     type Frame<'a> = Frame<'a>;
-    
+
     fn encode_with_writer<W>(frame: Self::Frame<'_>, writer: &mut W) -> std::io::Result<()>
-        where
-            W: std::io::Write {
+    where
+        W: std::io::Write,
+    {
         frame.encode_with_writer(writer)
     }
 }

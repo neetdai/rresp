@@ -35,17 +35,55 @@ impl<'a> Ast<'a> {
     }
 
     fn array_frame(&mut self, len: usize) -> Result<Vec<Frame<'a>>, Error> {
-        let mut list = Vec::with_capacity(len);
-        for _ in 0..len {
-            match self.next_frame() {
-                Some(Ok(frame)) => {
-                    list.push(frame);
+        let data = Vec::with_capacity(len);
+        let mut stack = Vec::new();
+        stack.push((data, len));
+
+        while let Some((mut current_vec, mut current_len)) = stack.pop() {
+            if current_len == 0 {
+                if stack.is_empty() {
+                    return Ok(current_vec);
+                } else if let Some((parent_vec, parent_len)) = stack.last_mut() {
+                    parent_vec.push(Frame::Array(current_vec));
+                    *parent_len -= 1;
+                    continue;
+                }
+            }
+
+            match self.lexer.next() {
+                Some(Ok(Tag::SimpleString(buf))) => {
+                    current_vec.push(Frame::SimpleString(buf));
+                    current_len -= 1;
+                }
+                Some(Ok(Tag::SimpleError(buf))) => {
+                    current_vec.push(Frame::SimpleError(buf));
+                    current_len -= 1;
+                }
+                Some(Ok(Tag::Integer(number))) => {
+                    current_vec.push(Frame::Integer(number));
+                    current_len -= 1;
+                }
+                Some(Ok(Tag::BulkString(buf))) => {
+                    current_vec.push(Frame::BulkString(buf));
+                    current_len -= 1;
+                }
+                Some(Ok(Tag::Null)) => {
+                    current_vec.push(Frame::Null);
+                    current_len -= 1;
+                }
+                Some(Ok(Tag::Array(len))) => {
+                    stack.push((current_vec, current_len));
+                    let new_vec = Vec::with_capacity(len);
+                    stack.push((new_vec, len));
+                    continue;
                 }
                 Some(Err(e)) => return Err(e),
                 None => return Err(Error::NotComplete),
             }
+            stack.push((current_vec, current_len));
         }
-        Ok(list)
+
+        Err(Error::NotComplete)
     }
 }
 

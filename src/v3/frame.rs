@@ -94,7 +94,8 @@ impl<'a> Frame<'a> {
         if let Some(attributes) = attributes {
             let attributes_len = attributes.len();
             let attributes_len_text = to_string(attributes_len);
-            attributes.iter()
+            attributes
+                .iter()
                 .fold(3 + attributes_len_text.len(), |prev_len, (key, value)| {
                     prev_len + key.encode_len() + value.encode_len()
                 })
@@ -103,19 +104,21 @@ impl<'a> Frame<'a> {
         }
     }
 
-    fn attibutes_encode<W>(attributes: &Option<Attributes<'a>>, writer: &mut W) -> IoResult<()> where W: Write {
+    fn attibutes_encode<W>(attributes: &Option<Attributes<'a>>, writer: &mut W) -> IoResult<()>
+    where
+        W: Write,
+    {
         if let Some(attributes) = attributes {
             let attributes_len = attributes.len();
             let attributes_len_text = to_string(attributes_len);
             writer.write(b"|")?;
             writer.write(attributes_len_text.as_bytes())?;
             writer.write(b"\r\n")?;
-            attributes.iter()
-                .try_for_each(|(key, value)| {
-                    key.encode_with_writer(writer)?;
-                    value.encode_with_writer(writer)?;
-                    Ok(())
-                })
+            attributes.iter().try_for_each(|(key, value)| {
+                key.encode_with_writer(writer)?;
+                value.encode_with_writer(writer)?;
+                Ok(())
+            })
         } else {
             Ok(())
         }
@@ -128,7 +131,7 @@ impl<'a> Frame<'a> {
         self.encode_with_writer(&mut buffer);
         buffer
     }
-    
+
     pub fn encode_with_writer<W>(&self, writer: &mut W) -> IoResult<()>
     where
         W: Write,
@@ -139,41 +142,37 @@ impl<'a> Frame<'a> {
                 writer.write(b"+")?;
                 writer.write(&data)?;
                 writer.write(b"\r\n")?;
-            },
+            }
             Self::SimpleError { data, attributes } => {
                 Self::attibutes_encode(attributes, writer)?;
                 writer.write(b"-")?;
                 writer.write(&data)?;
                 writer.write(b"\r\n")?;
-            },
+            }
             Self::Boolean { data, attributes } => {
-                let bool_text = if *data {
-                    b"t"
-                } else {
-                    b"f"
-                };
+                let bool_text = if *data { b"t" } else { b"f" };
                 Self::attibutes_encode(attributes, writer)?;
                 writer.write(b"#")?;
                 writer.write(bool_text)?;
                 writer.write(b"\r\n")?;
-            },
+            }
             Self::Null { data: _ } => {
                 writer.write(b"_\r\n")?;
-            },
+            }
             Self::Integer { data, attributes } => {
                 let text = to_string(*data);
                 Self::attibutes_encode(attributes, writer)?;
                 writer.write(b":")?;
                 writer.write(text.as_bytes())?;
                 writer.write(b"\r\n")?;
-            },
+            }
             Self::Double { data, attributes } => {
                 let text = to_string(*data);
                 Self::attibutes_encode(attributes, writer)?;
                 writer.write(b",")?;
                 writer.write(text.as_bytes())?;
                 writer.write(b"\r\n")?;
-            },
+            }
             Self::Bulkstring { data, attributes } => {
                 let data_len = data.len();
                 let data_len_text = to_string(data_len);
@@ -183,7 +182,7 @@ impl<'a> Frame<'a> {
                 writer.write(b"\r\n")?;
                 writer.write(data)?;
                 writer.write(b"\r\n")?;
-            },
+            }
             Self::BulkError { data, attributes } => {
                 let data_len = data.len();
                 let data_len_text = to_string(data_len);
@@ -276,9 +275,7 @@ impl<'a> EncodeLen for Frame<'a> {
                 let attributes_len = Self::attributes_len(attributes);
                 4 + attributes_len
             }
-            Self::Null { data } => {
-                3
-            }
+            Self::Null { data } => 3,
             Self::Integer { data, attributes } => {
                 let attributes_len = Self::attributes_len(attributes);
                 let text = to_string(*data);
@@ -307,17 +304,29 @@ impl<'a> EncodeLen for Frame<'a> {
             Self::Array { data, attributes } => {
                 let attributes_len = Self::attributes_len(attributes);
                 let text = to_string(data.len());
-                text.len() + data.iter().map(|frame| frame.encode_len()).sum::<usize>() + 5 + attributes_len
+                text.len()
+                    + data.iter().map(|frame| frame.encode_len()).sum::<usize>()
+                    + 5
+                    + attributes_len
             }
             Self::Map { data, attributes } => {
                 let attributes_len = Self::attributes_len(attributes);
                 let text = to_string(data.len());
-                text.len() + data.iter().map(|(key, value)| key.encode_len() + value.encode_len()).sum::<usize>() + 5 + attributes_len
+                text.len()
+                    + data
+                        .iter()
+                        .map(|(key, value)| key.encode_len() + value.encode_len())
+                        .sum::<usize>()
+                    + 5
+                    + attributes_len
             }
             Self::Set { data, attributes } => {
                 let attributes_len = Self::attributes_len(attributes);
                 let text = to_string(data.len());
-                text.len() + data.iter().map(|frame| frame.encode_len()).sum::<usize>() + 5 + attributes_len
+                text.len()
+                    + data.iter().map(|frame| frame.encode_len()).sum::<usize>()
+                    + 5
+                    + attributes_len
             }
             Self::Push { data } => {
                 let text = to_string(data.len());
