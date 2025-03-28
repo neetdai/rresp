@@ -86,6 +86,7 @@ impl<'a> Ast<'a> {
         }
     }
 
+    #[inline(always)]
     fn parse_boolean(
         &self,
         start_position: usize,
@@ -109,6 +110,7 @@ impl<'a> Ast<'a> {
         }
     }
 
+    #[inline(always)]
     fn parse_simple_string(
         &self,
         start_position: usize,
@@ -133,6 +135,7 @@ impl<'a> Ast<'a> {
         }
     }
 
+    #[inline(always)]
     fn parse_integer(
         &self,
         start_position: usize,
@@ -152,6 +155,7 @@ impl<'a> Ast<'a> {
         }
     }
 
+    #[inline(always)]
     fn parse_double(
         &self,
         start_position: usize,
@@ -171,6 +175,7 @@ impl<'a> Ast<'a> {
         }
     }
 
+    #[inline(always)]
     fn parse_bulk_string(
         &self,
         start_position: usize,
@@ -183,6 +188,7 @@ impl<'a> Ast<'a> {
         }
     }
 
+    #[inline(always)]
     fn parse_bulk_error(
         &self,
         start_position: usize,
@@ -195,6 +201,7 @@ impl<'a> Ast<'a> {
         }
     }
 
+    #[inline(always)]
     fn parse_verbatim_string(
         &self,
         start_position: usize,
@@ -467,6 +474,7 @@ impl<'a> Ast<'a> {
         Ok(Frame::Push { data })
     }
 
+    #[inline(always)]
     fn parse_big_number(
         &self,
         start_position: usize,
