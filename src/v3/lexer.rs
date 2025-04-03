@@ -5,15 +5,25 @@ use memchr::Memchr;
 
 use crate::Error;
 
-use super::tag::{Tag, TagType};
+// use super::tag::{Tag, TagType};
+use super::tag::{ArrayTag, BasicTag, BasicTagType, ToFrame};
 
 type ScanResult<T> = Result<T, Error>;
+
+#[derive(Debug)]
+enum Status {
+    None,
+    Array(Vec<Box<dyn ToFrame>>, usize),
+    Set(Vec<Box<dyn ToFrame>>, usize),
+    Map(Vec<Box<dyn ToFrame>>, usize),
+}
 
 #[derive(Debug)]
 pub(crate) struct Lexer<'a> {
     input: &'a [u8],
     scanner: Peekable<Memchr<'a>>,
     last_position: usize,
+    status: Status,
 }
 
 impl<'a> Lexer<'a> {
@@ -23,6 +33,7 @@ impl<'a> Lexer<'a> {
             input,
             scanner: scanner.peekable(),
             last_position: 0,
+            status: Status::None,
         }
     }
 
@@ -44,33 +55,37 @@ impl<'a> Lexer<'a> {
         &mut self,
         start_position: usize,
         mut end_position: usize,
-    ) -> Option<ScanResult<Tag>> {
+    ) -> Option<ScanResult<Box<dyn ToFrame>>> {
         let first = self.input.get(start_position)?;
         let mut start_position = start_position + 1;
 
-        let tag_type = match first {
+        match first {
             b'+' => {
                 self.last_position = end_position + 2;
-                TagType::SimpleString
+                // TagType::SimpleString
+                Some(Ok(Box::new(BasicTag {tag_type: BasicTagType::SimpleString, start_position, end_position })))
             }
             b'-' => {
                 self.last_position = end_position + 2;
-                TagType::SimpleError
+                // TagType::SimpleError
+                Some(Ok(Box::new(BasicTag {tag_type: BasicTagType::SimpleError, start_position, end_position })))
             }
             b':' => {
                 self.last_position = end_position + 2;
-                TagType::Integer
+                // TagType::Integer
+                Some(Ok(Box::new(BasicTag {tag_type: BasicTagType::Integer, start_position, end_position })))
             }
             b'|' => {
                 self.last_position = end_position + 2;
-                TagType::Attribute
+                // TagType::Attribute
+                todo!()
             }
             b'$' => {
                 let follow = self.input.get(start_position..end_position)?;
                 let options = ParseIntegerOptions::new();
                 let len_result = parse_with_options::<isize, _, STANDARD>(follow, &options);
                 match len_result {
-                    Ok(-1) => TagType::Null,
+                    Ok(-1) => Some(Ok(Box::new( BasicTag {tag_type: BasicTagType::Null, start_position, end_position}))),
                     Ok(len) => {
                         start_position = end_position + 2;
                         end_position = self.scanner.next()?;
@@ -80,7 +95,8 @@ impl<'a> Lexer<'a> {
                         }
 
                         self.last_position = end_position + 2;
-                        TagType::BulkString
+                        // TagType::BulkString
+                        Some(Ok(Box::new(BasicTag {tag_type: BasicTagType::BulkString, start_position, end_position})))
                     }
                     Err(e) => return Some(Err(Error::from(e))),
                 }
@@ -91,27 +107,32 @@ impl<'a> Lexer<'a> {
                 let len_result = parse_with_options::<isize, _, STANDARD>(follow, &options);
                 self.last_position = end_position + 2;
                 match len_result {
-                    Ok(-1) => TagType::Null,
+                    Ok(-1) => Some(Ok(Box::new( BasicTag {tag_type: BasicTagType::Null, start_position, end_position}))),
                     Ok(len) if len < 0 => return Some(Err(Error::from(Error::InvalidArray))),
-                    Ok(_) => TagType::Array,
+                    // Ok(_) => TagType::Array,
+                    Ok(_) => todo!(),
                     Err(e) => return Some(Err(Error::from(e))),
                 }
             }
             b'_' => {
                 self.last_position = end_position + 2;
-                TagType::Null
+                // TagType::Null
+                Some(Ok(Box::new( BasicTag {tag_type: BasicTagType::Null, start_position, end_position})))
             }
             b'#' => {
                 self.last_position = end_position + 2;
-                TagType::Boolean
+                // TagType::Boolean
+                Some(Ok(Box::new( BasicTag {tag_type: BasicTagType::Boolean, start_position, end_position})))
             }
             b',' => {
                 self.last_position = end_position + 2;
-                TagType::Double
+                // TagType::Double
+                Some(Ok(Box::new( BasicTag {tag_type: BasicTagType::Double, start_position, end_position})))
             }
             b'(' => {
                 self.last_position = end_position + 2;
-                TagType::BigNumber
+                // TagType::BigNumber
+                Some(Ok(Box::new( BasicTag {tag_type: BasicTagType::BigNumber, start_position, end_position})))
             }
             b'!' => {
                 let follow = self.input.get(start_position..end_position)?;
@@ -125,7 +146,8 @@ impl<'a> Lexer<'a> {
                             return Some(Err(Error::InvalidError));
                         } else {
                             self.last_position = end_position + 2;
-                            TagType::BulkError
+                            // TagType::BulkError
+                            Some(Ok(Box::new(BasicTag {tag_type: BasicTagType::BulkError, start_position, end_position})))
                         }
                     }
                     Err(e) => return Some(Err(Error::from(e))),
@@ -151,25 +173,26 @@ impl<'a> Lexer<'a> {
                             return Some(Err(Error::InvalidError));
                         } else {
                             self.last_position = end_position + 2;
-                            TagType::VerbatimString
+                            // TagType::VerbatimString
+                            Some(Ok(Box::new(BasicTag { tag_type: BasicTagType::VerbatimString, start_position, end_position})))
                         }
                     }
                     Err(e) => return Some(Err(Error::from(e))),
                 }
             }
             _ => return Some(Err(Error::Unknown)),
-        };
+        }
 
-        Some(Ok(Tag {
-            tag_type,
-            start_position,
-            end_position,
-        }))
+        // Some(Ok(Tag {
+        //     tag_type,
+        //     start_position,
+        //     end_position,
+        // }))
     }
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = ScanResult<Tag>;
+    type Item = ScanResult<Box<dyn ToFrame>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let end_position = self.walk()?;
