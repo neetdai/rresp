@@ -8,6 +8,7 @@ use rresp::{
     v3::{Frame, V3},
     EncodeLen,
 };
+use minivec::mini_vec;
 
 fn v3_encode(c: &mut Criterion) {
     let mut group = c.benchmark_group("v3_encode");
@@ -24,7 +25,7 @@ fn v3_encode(c: &mut Criterion) {
     });
 
     let frame = Frame::Array {
-        data: vec![Frame::Bulkstring {
+        data: mini_vec![Frame::Bulkstring {
             data: b"hello",
             attributes: None,
         }],
@@ -34,7 +35,7 @@ fn v3_encode(c: &mut Criterion) {
     group.bench_function("array", |b| {
         b.iter(|| {
             let frame = Frame::Array {
-                data: vec![Frame::Bulkstring {
+                data: mini_vec![Frame::Bulkstring {
                     data: b"hello",
                     attributes: None,
                 }],
@@ -45,8 +46,8 @@ fn v3_encode(c: &mut Criterion) {
     });
 
     let frame = Frame::Array {
-        data: vec![Frame::Array {
-            data: vec![Frame::Bulkstring {
+        data: mini_vec![Frame::Array {
+            data: mini_vec![Frame::Bulkstring {
                 data: b"hello",
                 attributes: None,
             }],
@@ -58,8 +59,8 @@ fn v3_encode(c: &mut Criterion) {
     group.bench_function("array2", |b| {
         b.iter(|| {
             let frame = Frame::Array {
-                data: vec![Frame::Array {
-                    data: vec![Frame::Bulkstring {
+                data: mini_vec![Frame::Array {
+                    data: mini_vec![Frame::Bulkstring {
                         data: b"hello",
                         attributes: None,
                     }],
