@@ -2,13 +2,13 @@ use criterion::{
     black_box, criterion_group, criterion_main, Bencher, BenchmarkId, Criterion, Throughput,
 };
 use lexical::to_string;
+use minivec::mini_vec;
 use rand::random;
 use rresp::{
     encode,
     v3::{Frame, V3},
     EncodeLen,
 };
-use minivec::mini_vec;
 
 fn v3_encode(c: &mut Criterion) {
     let mut group = c.benchmark_group("v3_encode");

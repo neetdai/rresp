@@ -3,9 +3,9 @@ use std::{
     iter::Peekable,
 };
 
+use crate::common::Error;
 use lexical::{format::STANDARD, parse_with_options, ParseFloatOptions, ParseIntegerOptions};
 use minivec::MiniVec;
-use crate::common::Error;
 
 use super::{frame::Frame, lexer::Lexer, tag::TagType};
 
@@ -61,25 +61,21 @@ impl<'a> Ast<'a> {
                 TagType::BulkError => {
                     Some(self.parse_bulk_error(tag.start_position, tag.end_position, None))
                 }
-                TagType::VerbatimString => Some(self.parse_verbatim_string(
-                    tag.start_position,
-                    tag.end_position,
-                    None,
-                )),
+                TagType::VerbatimString => {
+                    Some(self.parse_verbatim_string(tag.start_position, tag.end_position, None))
+                }
                 TagType::BigNumber => {
-                    Some(self.parse_big_number(tag.start_position, tag.end_position,None))
+                    Some(self.parse_big_number(tag.start_position, tag.end_position, None))
                 }
                 TagType::Array => {
                     Some(self.parse_array(tag.start_position, tag.end_position, None))
                 }
-                TagType::Map => {
-                    Some(self.parse_map(tag.start_position, tag.end_position, None))
-                }
-                TagType::Set => {
-                    Some(self.parse_set(tag.start_position, tag.end_position, None))
-                }
+                TagType::Map => Some(self.parse_map(tag.start_position, tag.end_position, None)),
+                TagType::Set => Some(self.parse_set(tag.start_position, tag.end_position, None)),
                 TagType::Push => Some(self.parse_push(tag.start_position, tag.end_position)),
-                TagType::Attribute => Some(self.parse_attribute(tag.start_position, tag.end_position)),
+                TagType::Attribute => {
+                    Some(self.parse_attribute(tag.start_position, tag.end_position))
+                }
                 _ => Some(Err(Error::Unknown)),
             },
             Some(Err(err)) => Some(Err(err)),
@@ -282,20 +278,14 @@ impl<'a> Ast<'a> {
                         stack.push((current_vec, current_len - 1));
                     }
                     TagType::SimpleString => {
-                        let frame = self.parse_simple_string(
-                            tag.start_position,
-                            tag.end_position,
-                            None,
-                        )?;
+                        let frame =
+                            self.parse_simple_string(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
                     TagType::SimpleError => {
-                        let frame = self.parse_simple_error(
-                            tag.start_position,
-                            tag.end_position,
-                            None,
-                        )?;
+                        let frame =
+                            self.parse_simple_error(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
@@ -317,11 +307,8 @@ impl<'a> Ast<'a> {
                         stack.push((current_vec, current_len - 1));
                     }
                     TagType::BulkString => {
-                        let frame = self.parse_bulk_string(
-                            tag.start_position,
-                            tag.end_position,
-                            None,
-                        )?;
+                        let frame =
+                            self.parse_bulk_string(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
@@ -332,11 +319,8 @@ impl<'a> Ast<'a> {
                         stack.push((current_vec, current_len - 1));
                     }
                     TagType::VerbatimString => {
-                        let frame = self.parse_verbatim_string(
-                            tag.start_position,
-                            tag.end_position,
-                            None,
-                        )?;
+                        let frame =
+                            self.parse_verbatim_string(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
@@ -359,14 +343,12 @@ impl<'a> Ast<'a> {
                         stack.push((new_array, new_len));
                     }
                     TagType::Map => {
-                        let frame =
-                            self.parse_map(tag.start_position, tag.end_position, None)?;
+                        let frame = self.parse_map(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
                     TagType::Set => {
-                        let frame =
-                            self.parse_set(tag.start_position, tag.end_position, None)?;
+                        let frame = self.parse_set(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
@@ -504,8 +486,7 @@ impl<'a> Ast<'a> {
         let mut attributes = HashMap::with_capacity(len);
         let mut func = || -> Option<Result<Frame<'a>, Error>> {
             match self.lexer.next() {
-                Some(Ok(tag)) => {
-                    match tag.tag_type {
+                Some(Ok(tag)) => match tag.tag_type {
                     TagType::Boolean => {
                         Some(self.parse_boolean(tag.start_position, tag.end_position, None))
                     }
@@ -528,25 +509,18 @@ impl<'a> Ast<'a> {
                     TagType::BulkError => {
                         Some(self.parse_bulk_error(tag.start_position, tag.end_position, None))
                     }
-                    TagType::VerbatimString => Some(self.parse_verbatim_string(
-                        tag.start_position,
-                        tag.end_position,
-                        None,
-                    )),
+                    TagType::VerbatimString => {
+                        Some(self.parse_verbatim_string(tag.start_position, tag.end_position, None))
+                    }
                     TagType::BigNumber => {
-                        Some(self.parse_big_number(tag.start_position, tag.end_position,None))
+                        Some(self.parse_big_number(tag.start_position, tag.end_position, None))
                     }
                     TagType::Array => {
                         Some(self.parse_array(tag.start_position, tag.end_position, None))
                     }
-                    TagType::Map => {
-                        Some(Err(Error::InvalidMap))
-                    }
-                    TagType::Set => {
-                        Some(Err(Error::InvalidSet))
-                    }
+                    TagType::Map => Some(Err(Error::InvalidMap)),
+                    TagType::Set => Some(Err(Error::InvalidSet)),
                     _ => Some(Err(Error::Unknown)),
-                }
                 },
                 Some(Err(err)) => Some(Err(err)),
                 None => None,
@@ -555,7 +529,7 @@ impl<'a> Ast<'a> {
         for _ in 0..len {
             let key = match func() {
                 Some(Ok(frame)) => frame,
-                Some(Err(err)) => return Err(err),              
+                Some(Err(err)) => return Err(err),
                 None => return Err(Error::NotComplete),
             };
 
@@ -568,20 +542,36 @@ impl<'a> Ast<'a> {
         }
         let attributes = Some(attributes);
         match self.lexer.next() {
-            Some(Ok(tag)) => {
-                match tag.tag_type {
-                TagType::AttributeSimpleString => self.parse_simple_string(tag.start_position, tag.end_position, attributes),
-                TagType::AttributeSimpleError => self.parse_simple_error(tag.start_position, tag.end_position, attributes),
-                TagType::AttributeInteger => self.parse_integer(tag.start_position, tag.end_position, attributes),
-                TagType::AttributeBigNumber => self.parse_big_number(tag.start_position, tag.end_position, attributes),
-                TagType::AttributeDouble => self.parse_double(tag.start_position, tag.end_position, attributes),
-                TagType::AttributeBoolean => self.parse_boolean(tag.start_position, tag.end_position, attributes),
-                TagType::AttributeBulkString => self.parse_bulk_string(tag.start_position, tag.end_position, attributes),
-                TagType::AttributeBulkError => self.parse_bulk_error(tag.start_position, tag.end_position, attributes),
-                TagType::AttributeVerbatimString => self.parse_verbatim_string(tag.start_position, tag.end_position, attributes),
-                _ => return Err(Error::Unknown),
+            Some(Ok(tag)) => match tag.tag_type {
+                TagType::AttributeSimpleString => {
+                    self.parse_simple_string(tag.start_position, tag.end_position, attributes)
                 }
-            }
+                TagType::AttributeSimpleError => {
+                    self.parse_simple_error(tag.start_position, tag.end_position, attributes)
+                }
+                TagType::AttributeInteger => {
+                    self.parse_integer(tag.start_position, tag.end_position, attributes)
+                }
+                TagType::AttributeBigNumber => {
+                    self.parse_big_number(tag.start_position, tag.end_position, attributes)
+                }
+                TagType::AttributeDouble => {
+                    self.parse_double(tag.start_position, tag.end_position, attributes)
+                }
+                TagType::AttributeBoolean => {
+                    self.parse_boolean(tag.start_position, tag.end_position, attributes)
+                }
+                TagType::AttributeBulkString => {
+                    self.parse_bulk_string(tag.start_position, tag.end_position, attributes)
+                }
+                TagType::AttributeBulkError => {
+                    self.parse_bulk_error(tag.start_position, tag.end_position, attributes)
+                }
+                TagType::AttributeVerbatimString => {
+                    self.parse_verbatim_string(tag.start_position, tag.end_position, attributes)
+                }
+                _ => return Err(Error::Unknown),
+            },
             Some(Err(e)) => return Err(e),
             None => return Err(Error::NotComplete),
         }

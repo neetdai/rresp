@@ -182,7 +182,7 @@ impl<'a> Lexer<'a> {
         };
 
         match self.status {
-            Status::None => {},
+            Status::None => {}
             Status::AttributeItems(ref mut times) => {
                 dbg!(&times);
                 if times == &0 {
@@ -203,7 +203,7 @@ impl<'a> Lexer<'a> {
                     TagType::Boolean => tag_type = TagType::AttributeBoolean,
                     TagType::VerbatimString => tag_type = TagType::AttributeVerbatimString,
                     TagType::BulkError => tag_type = TagType::AttributeBulkError,
-                    _ => {},
+                    _ => {}
                 }
                 self.status = Status::None;
             }

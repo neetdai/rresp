@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use minivec::mini_vec;
+use std::collections::HashMap;
 
 use rresp::{
     decode,

@@ -1,9 +1,9 @@
+use minivec::MiniVec;
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
     io::{Result as IoResult, Write},
 };
-use minivec::MiniVec;
 
 use lexical::to_string;
 
