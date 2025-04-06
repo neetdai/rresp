@@ -1,5 +1,7 @@
 #[derive(Debug, PartialEq)]
+#[repr(u8)]
 pub(crate) enum TagType {
+    Attribute,
     BulkString,
     SimpleString,
     SimpleError,
@@ -14,12 +16,12 @@ pub(crate) enum TagType {
     Map,
     Set,
     Push,
-    Attribute,
 }
 
 #[derive(Debug, PartialEq)]
+#[repr(C)]
 pub(crate) struct Tag {
-    pub(crate) tag_type: TagType,
     pub(crate) start_position: usize,
     pub(crate) end_position: usize,
+    pub(crate) tag_type: TagType,
 }

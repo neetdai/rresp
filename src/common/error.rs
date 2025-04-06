@@ -1,7 +1,7 @@
 use lexical::Error as LexicalError;
 use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error, PartialEq, Clone, Copy)]
 pub enum Error {
     #[error("not complete")]
     NotComplete,

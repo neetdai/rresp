@@ -4,7 +4,7 @@ use std::{
 };
 
 use lexical::{format::STANDARD, parse_with_options, ParseFloatOptions, ParseIntegerOptions};
-
+use minivec::MiniVec;
 use crate::common::Error;
 
 use super::{frame::Frame, lexer::Lexer, tag::TagType};
@@ -236,7 +236,7 @@ impl<'a> Ast<'a> {
         let options = ParseIntegerOptions::new();
         let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
 
-        let mut data = Vec::with_capacity(len);
+        let mut data = MiniVec::with_capacity(len);
 
         let mut stack = Vec::new();
         stack.push((data, len));
@@ -353,7 +353,7 @@ impl<'a> Ast<'a> {
                         let new_len =
                             parse_with_options::<usize, &[u8], STANDARD>(new_len_bytes, &options)?;
 
-                        let new_array = Vec::with_capacity(new_len);
+                        let new_array = MiniVec::with_capacity(new_len);
                         stack.push((current_vec, current_len));
                         stack.push((new_array, new_len));
                     }
@@ -535,6 +535,7 @@ impl<'a> Iterator for Ast<'a> {
 
 mod test {
     use super::*;
+    use minivec::mini_vec;
 
     #[test]
     fn test_array() {
@@ -544,7 +545,7 @@ mod test {
         assert_eq!(
             ast.next().unwrap().unwrap(),
             Frame::Array {
-                data: vec![
+                data: mini_vec![
                     Frame::Bulkstring {
                         data: b"foo",
                         attributes: None
@@ -568,8 +569,8 @@ mod test {
         assert_eq!(
             ast.next().unwrap().unwrap(),
             Frame::Array {
-                data: vec![Frame::Array {
-                    data: vec![Frame::Bulkstring {
+                data: mini_vec![Frame::Array {
+                    data: mini_vec![Frame::Bulkstring {
                         data: b"foo",
                         attributes: None
                     }],

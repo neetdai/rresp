@@ -3,6 +3,7 @@ use std::{
     hash::Hash,
     io::{Result as IoResult, Write},
 };
+use minivec::MiniVec;
 
 use lexical::to_string;
 
@@ -48,7 +49,7 @@ pub enum Frame<'a> {
         attributes: Option<Attributes<'a>>,
     },
     Array {
-        data: Vec<Frame<'a>>,
+        data: MiniVec<Frame<'a>>,
         attributes: Option<Attributes<'a>>,
     },
     Map {

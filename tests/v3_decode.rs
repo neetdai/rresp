@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use minivec::mini_vec;
 
 use rresp::{
     decode,
@@ -65,7 +66,7 @@ fn decode_v3() {
         (frame, remaining),
         (
             Frame::Array {
-                data: vec![
+                data: mini_vec![
                     Frame::Integer {
                         data: 10,
                         attributes: None
@@ -87,7 +88,7 @@ fn decode_v3() {
                         attributes: None
                     },
                     Frame::Array {
-                        data: vec![Frame::SimpleString {
+                        data: mini_vec![Frame::SimpleString {
                             data: b"ok",
                             attributes: None
                         }],
@@ -110,7 +111,7 @@ fn decode_v3() {
             attributes: None,
         },
         Frame::Array {
-            data: vec![Frame::Integer {
+            data: mini_vec![Frame::Integer {
                 data: 1,
                 attributes: None,
             }],
