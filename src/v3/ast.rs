@@ -23,63 +23,64 @@ impl<'a> Ast<'a> {
     }
 
     fn next_frame(&mut self) -> Option<Result<Frame<'a>, Error>> {
-        let attribute = {
-            if let Some(Ok(tag)) = self.lexer.next_if(|result| match result {
-                Ok(tag) if tag.tag_type == TagType::Attribute => true,
-                _ => false,
-            }) {
-                match self.parse_attribute(tag.start_position, tag.end_position) {
-                    Ok(attr) => Some(attr),
-                    Err(err) => return Some(Err(err)),
-                }
-            } else {
-                None
-            }
-        };
+        // let attribute = {
+        //     if let Some(Ok(tag)) = self.lexer.next_if(|result| match result {
+        //         Ok(tag) if tag.tag_type == TagType::Attribute => true,
+        //         _ => false,
+        //     }) {
+        //         match self.parse_attribute(tag.start_position, tag.end_position) {
+        //             Ok(attr) => Some(attr),
+        //             Err(err) => return Some(Err(err)),
+        //         }
+        //     } else {
+        //         None
+        //     }
+        // };
 
         match self.lexer.next() {
             Some(Ok(tag)) => match tag.tag_type {
                 TagType::Boolean => {
-                    Some(self.parse_boolean(tag.start_position, tag.end_position, attribute))
+                    Some(self.parse_boolean(tag.start_position, tag.end_position, None))
                 }
                 TagType::SimpleString => {
-                    Some(self.parse_simple_string(tag.start_position, tag.end_position, attribute))
+                    Some(self.parse_simple_string(tag.start_position, tag.end_position, None))
                 }
                 TagType::SimpleError => {
-                    Some(self.parse_simple_error(tag.start_position, tag.end_position, attribute))
+                    Some(self.parse_simple_error(tag.start_position, tag.end_position, None))
                 }
                 TagType::Null => Some(Ok(Frame::Null { data: () })),
                 TagType::Integer => {
-                    Some(self.parse_integer(tag.start_position, tag.end_position, attribute))
+                    Some(self.parse_integer(tag.start_position, tag.end_position, None))
                 }
                 TagType::Double => {
-                    Some(self.parse_double(tag.start_position, tag.end_position, attribute))
+                    Some(self.parse_double(tag.start_position, tag.end_position, None))
                 }
                 TagType::BulkString => {
-                    Some(self.parse_bulk_string(tag.start_position, tag.end_position, attribute))
+                    Some(self.parse_bulk_string(tag.start_position, tag.end_position, None))
                 }
                 TagType::BulkError => {
-                    Some(self.parse_bulk_error(tag.start_position, tag.end_position, attribute))
+                    Some(self.parse_bulk_error(tag.start_position, tag.end_position, None))
                 }
                 TagType::VerbatimString => Some(self.parse_verbatim_string(
                     tag.start_position,
                     tag.end_position,
-                    attribute,
+                    None,
                 )),
                 TagType::BigNumber => {
-                    Some(self.parse_big_number(tag.start_position, tag.end_position, attribute))
+                    Some(self.parse_big_number(tag.start_position, tag.end_position,None))
                 }
                 TagType::Array => {
-                    Some(self.parse_array(tag.start_position, tag.end_position, attribute))
+                    Some(self.parse_array(tag.start_position, tag.end_position, None))
                 }
                 TagType::Map => {
-                    Some(self.parse_map(tag.start_position, tag.end_position, attribute))
+                    Some(self.parse_map(tag.start_position, tag.end_position, None))
                 }
                 TagType::Set => {
-                    Some(self.parse_set(tag.start_position, tag.end_position, attribute))
+                    Some(self.parse_set(tag.start_position, tag.end_position, None))
                 }
                 TagType::Push => Some(self.parse_push(tag.start_position, tag.end_position)),
-                TagType::Attribute => Some(Err(Error::InvalidBulkString)),
+                TagType::Attribute => Some(self.parse_attribute(tag.start_position, tag.end_position)),
+                _ => Some(Err(Error::Unknown)),
             },
             Some(Err(err)) => Some(Err(err)),
             None => None,
@@ -258,25 +259,25 @@ impl<'a> Ast<'a> {
                 }
             }
 
-            let attribute = {
-                if let Some(Ok(tag)) = self.lexer.next_if(|result| match result {
-                    Ok(tag) if tag.tag_type == TagType::Attribute => true,
-                    _ => false,
-                }) {
-                    match self.parse_attribute(tag.start_position, tag.end_position) {
-                        Ok(attr) => Some(attr),
-                        Err(err) => return Err(err),
-                    }
-                } else {
-                    None
-                }
-            };
+            // let attribute = {
+            //     if let Some(Ok(tag)) = self.lexer.next_if(|result| match result {
+            //         Ok(tag) if tag.tag_type == TagType::Attribute => true,
+            //         _ => false,
+            //     }) {
+            //         match self.parse_attribute(tag.start_position, tag.end_position) {
+            //             Ok(attr) => Some(attr),
+            //             Err(err) => return Err(err),
+            //         }
+            //     } else {
+            //         None
+            //     }
+            // };
 
             match self.lexer.next() {
                 Some(Ok(tag)) => match tag.tag_type {
                     TagType::Boolean => {
                         let frame =
-                            self.parse_boolean(tag.start_position, tag.end_position, attribute)?;
+                            self.parse_boolean(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
@@ -284,7 +285,7 @@ impl<'a> Ast<'a> {
                         let frame = self.parse_simple_string(
                             tag.start_position,
                             tag.end_position,
-                            attribute,
+                            None,
                         )?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
@@ -293,7 +294,7 @@ impl<'a> Ast<'a> {
                         let frame = self.parse_simple_error(
                             tag.start_position,
                             tag.end_position,
-                            attribute,
+                            None,
                         )?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
@@ -305,13 +306,13 @@ impl<'a> Ast<'a> {
                     }
                     TagType::Integer => {
                         let frame =
-                            self.parse_integer(tag.start_position, tag.end_position, attribute)?;
+                            self.parse_integer(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
                     TagType::Double => {
                         let frame =
-                            self.parse_double(tag.start_position, tag.end_position, attribute)?;
+                            self.parse_double(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
@@ -319,14 +320,14 @@ impl<'a> Ast<'a> {
                         let frame = self.parse_bulk_string(
                             tag.start_position,
                             tag.end_position,
-                            attribute,
+                            None,
                         )?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
                     TagType::BulkError => {
                         let frame =
-                            self.parse_bulk_error(tag.start_position, tag.end_position, attribute)?;
+                            self.parse_bulk_error(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
@@ -334,14 +335,14 @@ impl<'a> Ast<'a> {
                         let frame = self.parse_verbatim_string(
                             tag.start_position,
                             tag.end_position,
-                            attribute,
+                            None,
                         )?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
                     TagType::BigNumber => {
                         let frame =
-                            self.parse_big_number(tag.start_position, tag.end_position, attribute)?;
+                            self.parse_big_number(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
@@ -359,13 +360,13 @@ impl<'a> Ast<'a> {
                     }
                     TagType::Map => {
                         let frame =
-                            self.parse_map(tag.start_position, tag.end_position, attribute)?;
+                            self.parse_map(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
                     TagType::Set => {
                         let frame =
-                            self.parse_set(tag.start_position, tag.end_position, attribute)?;
+                            self.parse_set(tag.start_position, tag.end_position, None)?;
                         current_vec.push(frame);
                         stack.push((current_vec, current_len - 1));
                     }
@@ -375,6 +376,7 @@ impl<'a> Ast<'a> {
                         stack.push((current_vec, current_len - 1));
                     }
                     TagType::Attribute => return Err(Error::InvalidBulkString),
+                    _ => return Err(Error::Unknown),
                 },
                 Some(Err(err)) => return Err(err),
                 None => return Err(Error::NotComplete),
@@ -491,7 +493,7 @@ impl<'a> Ast<'a> {
         &mut self,
         start_position: usize,
         end_position: usize,
-    ) -> Result<HashMap<Frame<'a>, Frame<'a>>, Error> {
+    ) -> Result<Frame<'a>, Error> {
         let len_bytes = self
             .input
             .get(start_position..end_position)
@@ -499,25 +501,90 @@ impl<'a> Ast<'a> {
         let options = ParseIntegerOptions::new();
         let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
 
-        let mut data = HashMap::with_capacity(len);
+        let mut attributes = HashMap::with_capacity(len);
+        let mut func = || -> Option<Result<Frame<'a>, Error>> {
+            match self.lexer.next() {
+                Some(Ok(tag)) => {
+                    match tag.tag_type {
+                    TagType::Boolean => {
+                        Some(self.parse_boolean(tag.start_position, tag.end_position, None))
+                    }
+                    TagType::SimpleString => {
+                        Some(self.parse_simple_string(tag.start_position, tag.end_position, None))
+                    }
+                    TagType::SimpleError => {
+                        Some(self.parse_simple_error(tag.start_position, tag.end_position, None))
+                    }
+                    TagType::Null => Some(Ok(Frame::Null { data: () })),
+                    TagType::Integer => {
+                        Some(self.parse_integer(tag.start_position, tag.end_position, None))
+                    }
+                    TagType::Double => {
+                        Some(self.parse_double(tag.start_position, tag.end_position, None))
+                    }
+                    TagType::BulkString => {
+                        Some(self.parse_bulk_string(tag.start_position, tag.end_position, None))
+                    }
+                    TagType::BulkError => {
+                        Some(self.parse_bulk_error(tag.start_position, tag.end_position, None))
+                    }
+                    TagType::VerbatimString => Some(self.parse_verbatim_string(
+                        tag.start_position,
+                        tag.end_position,
+                        None,
+                    )),
+                    TagType::BigNumber => {
+                        Some(self.parse_big_number(tag.start_position, tag.end_position,None))
+                    }
+                    TagType::Array => {
+                        Some(self.parse_array(tag.start_position, tag.end_position, None))
+                    }
+                    TagType::Map => {
+                        Some(Err(Error::InvalidMap))
+                    }
+                    TagType::Set => {
+                        Some(Err(Error::InvalidSet))
+                    }
+                    _ => Some(Err(Error::Unknown)),
+                }
+                },
+                Some(Err(err)) => Some(Err(err)),
+                None => None,
+            }
+        };
         for _ in 0..len {
-            let key = match self.next_frame() {
-                Some(Ok(Frame::Map { data, attributes })) => return Err(Error::InvalidMap),
-                Some(Ok(Frame::Set { data, attributes })) => return Err(Error::InvalidMap),
+            let key = match func() {
                 Some(Ok(frame)) => frame,
-                Some(Err(err)) => return Err(err),
+                Some(Err(err)) => return Err(err),              
                 None => return Err(Error::NotComplete),
             };
 
-            let value = match self.next_frame() {
+            let value = match func() {
                 Some(Ok(frame)) => frame,
                 Some(Err(err)) => return Err(err),
                 None => return Err(Error::NotComplete),
             };
-            data.insert(key, value);
+            attributes.insert(key, value);
         }
-
-        Ok(data)
+        let attributes = Some(attributes);
+        match self.lexer.next() {
+            Some(Ok(tag)) => {
+                match tag.tag_type {
+                TagType::AttributeSimpleString => self.parse_simple_string(tag.start_position, tag.end_position, attributes),
+                TagType::AttributeSimpleError => self.parse_simple_error(tag.start_position, tag.end_position, attributes),
+                TagType::AttributeInteger => self.parse_integer(tag.start_position, tag.end_position, attributes),
+                TagType::AttributeBigNumber => self.parse_big_number(tag.start_position, tag.end_position, attributes),
+                TagType::AttributeDouble => self.parse_double(tag.start_position, tag.end_position, attributes),
+                TagType::AttributeBoolean => self.parse_boolean(tag.start_position, tag.end_position, attributes),
+                TagType::AttributeBulkString => self.parse_bulk_string(tag.start_position, tag.end_position, attributes),
+                TagType::AttributeBulkError => self.parse_bulk_error(tag.start_position, tag.end_position, attributes),
+                TagType::AttributeVerbatimString => self.parse_verbatim_string(tag.start_position, tag.end_position, attributes),
+                _ => return Err(Error::Unknown),
+                }
+            }
+            Some(Err(e)) => return Err(e),
+            None => return Err(Error::NotComplete),
+        }
     }
 }
 

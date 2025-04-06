@@ -10,10 +10,18 @@ use super::tag::{Tag, TagType};
 type ScanResult<T> = Result<T, Error>;
 
 #[derive(Debug)]
+enum Status {
+    None,
+    AttributeItems(usize),
+    AttributeFinished,
+}
+
+#[derive(Debug)]
 pub(crate) struct Lexer<'a> {
     input: &'a [u8],
     scanner: Peekable<Memchr<'a>>,
     last_position: usize,
+    status: Status,
 }
 
 impl<'a> Lexer<'a> {
@@ -23,6 +31,7 @@ impl<'a> Lexer<'a> {
             input,
             scanner: scanner.peekable(),
             last_position: 0,
+            status: Status::None,
         }
     }
 
@@ -48,7 +57,7 @@ impl<'a> Lexer<'a> {
         let first = self.input.get(start_position)?;
         let mut start_position = start_position + 1;
 
-        let tag_type = match first {
+        let mut tag_type = match first {
             b'+' => {
                 self.last_position = end_position + 2;
                 TagType::SimpleString
@@ -63,6 +72,18 @@ impl<'a> Lexer<'a> {
             }
             b'|' => {
                 self.last_position = end_position + 2;
+                let follow = self.input.get(start_position..end_position)?;
+                let options = ParseIntegerOptions::new();
+                let len_result = parse_with_options::<usize, _, STANDARD>(follow, &options);
+                match len_result {
+                    Ok(len) => {
+                        self.status = Status::AttributeItems(len * 2);
+                    }
+                    Err(e) => {
+                        return Some(Err(Error::from(e)));
+                    }
+                }
+
                 TagType::Attribute
             }
             b'$' => {
@@ -159,6 +180,34 @@ impl<'a> Lexer<'a> {
             }
             _ => return Some(Err(Error::Unknown)),
         };
+
+        match self.status {
+            Status::None => {},
+            Status::AttributeItems(ref mut times) => {
+                dbg!(&times);
+                if times == &0 {
+                    self.status = Status::AttributeFinished;
+                } else {
+                    *times -= 1;
+                }
+            }
+            Status::AttributeFinished => {
+                match tag_type {
+                    TagType::Array => tag_type = TagType::AttributeArray,
+                    TagType::BulkString => tag_type = TagType::AttributeBulkString,
+                    TagType::SimpleString => tag_type = TagType::AttributeSimpleString,
+                    TagType::SimpleError => tag_type = TagType::AttributeSimpleError,
+                    TagType::Integer => tag_type = TagType::AttributeInteger,
+                    TagType::BigNumber => tag_type = TagType::AttributeBigNumber,
+                    TagType::Double => tag_type = TagType::AttributeDouble,
+                    TagType::Boolean => tag_type = TagType::AttributeBoolean,
+                    TagType::VerbatimString => tag_type = TagType::AttributeVerbatimString,
+                    TagType::BulkError => tag_type = TagType::AttributeBulkError,
+                    _ => {},
+                }
+                self.status = Status::None;
+            }
+        }
 
         Some(Ok(Tag {
             tag_type,

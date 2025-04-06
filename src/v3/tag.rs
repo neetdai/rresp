@@ -16,6 +16,16 @@ pub(crate) enum TagType {
     Map,
     Set,
     Push,
+    AttributeBulkString,
+    AttributeSimpleString,
+    AttributeSimpleError,
+    AttributeInteger,
+    AttributeArray,
+    AttributeBoolean,
+    AttributeDouble,
+    AttributeBigNumber,
+    AttributeBulkError,
+    AttributeVerbatimString,
 }
 
 #[derive(Debug, PartialEq)]
