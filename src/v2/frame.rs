@@ -5,13 +5,14 @@ use lexical::to_string;
 use crate::EncodeLen;
 
 use super::{utils::CRLF, Lexer};
+use minivec::MiniVec;
 
 #[derive(Debug, PartialEq)]
 pub enum Frame<'a> {
     BulkString(&'a [u8]),
     Null,
     Integer(i64),
-    Array(Vec<Frame<'a>>),
+    Array(MiniVec<Frame<'a>>),
     SimpleError(&'a [u8]),
     SimpleString(&'a [u8]),
 }
@@ -147,6 +148,7 @@ impl<'a> EncodeLen for Frame<'a> {
 
 mod test {
     use super::*;
+    use minivec::mini_vec;
 
     #[test]
     fn test_encode_null() {
@@ -185,14 +187,14 @@ mod test {
 
     #[test]
     fn test_encode_array() {
-        let frame = Frame::Array(vec![Frame::SimpleString(b"Hello"), Frame::Integer(42)]);
+        let frame = Frame::Array(mini_vec![Frame::SimpleString(b"Hello"), Frame::Integer(42)]);
         let encoded = frame.encode();
         assert_eq!(encoded, b"*2\r\n+Hello\r\n:42\r\n".to_vec());
     }
 
     #[test]
     fn test_encode_with_writer() {
-        let frame = Frame::Array(vec![
+        let frame = Frame::Array(mini_vec![
             Frame::SimpleString(b"Hello"),
             Frame::Integer(42),
             Frame::BulkString(b"world"),

@@ -8,6 +8,7 @@ use rresp::{
     v2::{Frame, V2},
     EncodeLen,
 };
+use minivec::mini_vec;
 
 fn v2_encode(c: &mut Criterion) {
     let mut group = c.benchmark_group("v2_encode");
@@ -20,7 +21,7 @@ fn v2_encode(c: &mut Criterion) {
         });
     });
 
-    let blob_frame = Frame::Array(vec![
+    let blob_frame = Frame::Array(mini_vec![
         Frame::BulkString(b"hello world"),
         Frame::Null,
         Frame::Integer(1024),
@@ -30,7 +31,7 @@ fn v2_encode(c: &mut Criterion) {
     group.throughput(Throughput::Elements(blob_frame.encode_len() as u64));
     group.bench_function(BenchmarkId::new("encode_array", 18), |b| {
         b.iter(|| {
-            let blob_frame = Frame::Array(vec![
+            let blob_frame = Frame::Array(mini_vec![
                 Frame::BulkString(b"hello world"),
                 Frame::Null,
                 Frame::Integer(1024),

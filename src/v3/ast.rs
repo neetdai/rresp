@@ -543,31 +543,31 @@ impl<'a> Ast<'a> {
         let attributes = Some(attributes);
         match self.lexer.next() {
             Some(Ok(tag)) => match tag.tag_type {
-                TagType::AttributeSimpleString => {
+                TagType::SimpleString => {
                     self.parse_simple_string(tag.start_position, tag.end_position, attributes)
                 }
-                TagType::AttributeSimpleError => {
+                TagType::SimpleError => {
                     self.parse_simple_error(tag.start_position, tag.end_position, attributes)
                 }
-                TagType::AttributeInteger => {
+                TagType::Integer => {
                     self.parse_integer(tag.start_position, tag.end_position, attributes)
                 }
-                TagType::AttributeBigNumber => {
+                TagType::BigNumber => {
                     self.parse_big_number(tag.start_position, tag.end_position, attributes)
                 }
-                TagType::AttributeDouble => {
+                TagType::Double => {
                     self.parse_double(tag.start_position, tag.end_position, attributes)
                 }
-                TagType::AttributeBoolean => {
+                TagType::Boolean => {
                     self.parse_boolean(tag.start_position, tag.end_position, attributes)
                 }
-                TagType::AttributeBulkString => {
+                TagType::BulkString => {
                     self.parse_bulk_string(tag.start_position, tag.end_position, attributes)
                 }
-                TagType::AttributeBulkError => {
+                TagType::BulkError => {
                     self.parse_bulk_error(tag.start_position, tag.end_position, attributes)
                 }
-                TagType::AttributeVerbatimString => {
+                TagType::VerbatimString => {
                     self.parse_verbatim_string(tag.start_position, tag.end_position, attributes)
                 }
                 _ => return Err(Error::Unknown),

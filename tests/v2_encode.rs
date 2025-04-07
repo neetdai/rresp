@@ -3,6 +3,7 @@ use rresp::{
     v2::{Frame, V2},
     Error,
 };
+use minivec::mini_vec;
 
 #[test]
 fn test_encode_simple_string() {
@@ -34,7 +35,7 @@ fn test_encode_bulk_string() {
 
 #[test]
 fn test_encode_array() {
-    let frame = Frame::Array(vec![Frame::SimpleString(b"OK"), Frame::Integer(123)]);
+    let frame = Frame::Array(mini_vec![Frame::SimpleString(b"OK"), Frame::Integer(123)]);
     let encoded = encode::<V2>(frame).unwrap();
     assert_eq!(encoded, b"*2\r\n+OK\r\n:123\r\n");
 }

@@ -1,6 +1,7 @@
 use crate::common::Error;
 
 use super::{frame::Frame, tag::Tag, Lexer};
+use minivec::MiniVec;
 
 #[derive(Debug)]
 pub(crate) struct Ast<'a> {
@@ -34,8 +35,8 @@ impl<'a> Ast<'a> {
         }
     }
 
-    fn array_frame(&mut self, len: usize) -> Result<Vec<Frame<'a>>, Error> {
-        let data = Vec::with_capacity(len);
+    fn array_frame(&mut self, len: usize) -> Result<MiniVec<Frame<'a>>, Error> {
+        let data = MiniVec::with_capacity(len);
         let mut stack = Vec::new();
         stack.push((data, len));
 
@@ -73,7 +74,7 @@ impl<'a> Ast<'a> {
                 }
                 Some(Ok(Tag::Array(len))) => {
                     stack.push((current_vec, current_len));
-                    let new_vec = Vec::with_capacity(len);
+                    let new_vec = MiniVec::with_capacity(len);
                     stack.push((new_vec, len));
                     continue;
                 }

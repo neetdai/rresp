@@ -3,6 +3,7 @@ use rresp::{
     v2::{Frame, V2},
     Error,
 };
+use minivec::mini_vec;
 
 #[test]
 fn decode_v2() {
@@ -39,13 +40,13 @@ fn decode_v2() {
     assert_eq!(
         (frame, remaining),
         (
-            Frame::Array(vec![
+            Frame::Array(mini_vec![
                 Frame::Integer(10),
                 Frame::Integer(-1),
                 Frame::BulkString(b"hello"),
                 Frame::SimpleString(b"world"),
                 Frame::SimpleError(b"err"),
-                Frame::Array(vec![Frame::SimpleString(b"ok"),])
+                Frame::Array(mini_vec![Frame::SimpleString(b"ok"),])
             ]),
             48
         )
