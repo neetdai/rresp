@@ -157,6 +157,16 @@ impl<'a> Lexer<'a> {
                     Err(e) => return Some(Err(Error::from(e))),
                 }
             }
+            b'>' => {
+                let follow = self.input.get(start_position..end_position)?;
+                let options = ParseIntegerOptions::new();
+                let len_result = parse_with_options::<usize, _, STANDARD>(follow, &options);
+                self.last_position = end_position + 2;
+                match len_result {
+                    Ok(_) => TagType::Push,
+                    Err(e) => return Some(Err(Error::from(e))),
+                }
+            }
             _ => return Some(Err(Error::Unknown)),
         };
 
@@ -311,5 +321,20 @@ mod test {
                 end_position: 9
             }
         );
+    }
+
+    #[test]
+    fn test_push() {
+        let input = b">3\r\n+hello\r\n+world\r\n+!\r\n";
+        let mut lexer = Lexer::new(input);
+
+        assert_eq!(
+            lexer.next().unwrap().unwrap(),
+            Tag {
+                tag_type: TagType::Push,
+                start_position: 1,
+                end_position: 2
+            }
+        )
     }
 }

@@ -23,19 +23,6 @@ impl<'a> Ast<'a> {
     }
 
     fn next_frame(&mut self) -> Option<Result<Frame<'a>, Error>> {
-        // let attribute = {
-        //     if let Some(Ok(tag)) = self.lexer.next_if(|result| match result {
-        //         Ok(tag) if tag.tag_type == TagType::Attribute => true,
-        //         _ => false,
-        //     }) {
-        //         match self.parse_attribute(tag.start_position, tag.end_position) {
-        //             Ok(attr) => Some(attr),
-        //             Err(err) => return Some(Err(err)),
-        //         }
-        //     } else {
-        //         None
-        //     }
-        // };
 
         match self.lexer.next() {
             Some(Ok(tag)) => match tag.tag_type {
@@ -254,20 +241,6 @@ impl<'a> Ast<'a> {
                     continue;
                 }
             }
-
-            // let attribute = {
-            //     if let Some(Ok(tag)) = self.lexer.next_if(|result| match result {
-            //         Ok(tag) if tag.tag_type == TagType::Attribute => true,
-            //         _ => false,
-            //     }) {
-            //         match self.parse_attribute(tag.start_position, tag.end_position) {
-            //             Ok(attr) => Some(attr),
-            //             Err(err) => return Err(err),
-            //         }
-            //     } else {
-            //         None
-            //     }
-            // };
 
             match self.lexer.next() {
                 Some(Ok(tag)) => match tag.tag_type {
@@ -664,5 +637,16 @@ mod test {
         let mut ast = Ast::new(input);
 
         assert_eq!(ast.next().unwrap(), Err(Error::InvalidMap));
+    }
+
+    #[test]
+    fn test_push() {
+        let input = b">1\r\n$3\r\nbar\r\n";
+        let mut ast = Ast::new(input);
+
+        assert_eq!(
+            ast.next().unwrap(),
+            Ok(Frame::Push { data: vec![Frame::Bulkstring { data: b"bar", attributes: None }] })
+        )
     }
 }
