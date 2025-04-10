@@ -1,9 +1,9 @@
+use minivec::mini_vec;
 use rresp::{
     decode,
     v2::{Frame, V2},
     Error,
 };
-use minivec::mini_vec;
 
 #[test]
 fn decode_v2() {

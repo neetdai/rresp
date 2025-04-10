@@ -1,9 +1,9 @@
+use minivec::mini_vec;
 use rresp::{
     encode,
     v2::{Frame, V2},
     Error,
 };
-use minivec::mini_vec;
 
 #[test]
 fn test_encode_simple_string() {

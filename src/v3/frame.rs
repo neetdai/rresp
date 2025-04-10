@@ -61,7 +61,7 @@ pub enum Frame<'a> {
         attributes: Option<Attributes<'a>>,
     },
     Push {
-        data: Vec<Frame<'a>>,
+        data: MiniVec<Frame<'a>>,
     },
     BigNumber {
         data: &'a [u8],

@@ -23,7 +23,6 @@ impl<'a> Ast<'a> {
     }
 
     fn next_frame(&mut self) -> Option<Result<Frame<'a>, Error>> {
-
         match self.lexer.next() {
             Some(Ok(tag)) => match tag.tag_type {
                 TagType::Boolean => {
@@ -419,10 +418,12 @@ impl<'a> Ast<'a> {
         let options = ParseIntegerOptions::new();
         let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
 
-        let mut data = Vec::with_capacity(len);
+        let mut data = MiniVec::with_capacity(len);
         for _ in 0..len {
             match self.next_frame() {
-                Some(Ok(frame)) => data.push(frame),
+                Some(Ok(frame)) => {
+                    data.push(frame);
+                }
                 Some(Err(err)) => return Err(err),
                 None => return Err(Error::NotComplete),
             }
@@ -646,7 +647,12 @@ mod test {
 
         assert_eq!(
             ast.next().unwrap(),
-            Ok(Frame::Push { data: vec![Frame::Bulkstring { data: b"bar", attributes: None }] })
+            Ok(Frame::Push {
+                data: mini_vec![Frame::Bulkstring {
+                    data: b"bar",
+                    attributes: None
+                }]
+            })
         )
     }
 }
