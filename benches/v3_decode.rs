@@ -84,10 +84,46 @@ impl DecodeArrayTreeParams {
     }
 }
 
+fn build_attribute(len: usize) -> Vec<u8> {
+    let len_str = to_string(len);
+    let mut buf = Vec::new();
+    buf.extend_from_slice(b"|");
+    buf.extend_from_slice(len_str.as_bytes());
+    buf.extend_from_slice(b"\r\n");
+
+    for index in 0..len {
+        let key = to_string(index);
+        buf.extend_from_slice(b"+");
+        buf.extend_from_slice(key.as_bytes());
+        buf.extend_from_slice(b"\r\n");
+
+        buf.extend_from_slice(b"$5\r\nhello\r\n");
+    }
+    buf.extend_from_slice(b"$3\r\nend\r\n");
+
+    buf
+}
+
+struct DecodeAttributeParams(Vec<(Vec<u8>, usize)>);
+
+impl DecodeAttributeParams {
+    fn new() -> Self {
+        let params = vec![
+            (build_attribute(10), 10),
+            (build_attribute(100), 100),
+            (build_attribute(1000), 1000),
+            // (build_attribute(10000), 10000),
+        ];
+        Self(params)
+    }
+    
+}
+
 fn v3_decode(c: &mut Criterion) {
     let bulk_params = DecodeBulkParams::new();
     let array_params = DecodeArrayParams::new();
     let array_tree_params = DecodeArrayTreeParams::new();
+    let attribute_params = DecodeAttributeParams::new();
 
     let mut group = c.benchmark_group("v3_decode");
 
@@ -114,6 +150,13 @@ fn v3_decode(c: &mut Criterion) {
                 b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
             },
         );
+    }
+
+    for (attribute, len) in attribute_params.0 {
+        group.throughput(Throughput::Elements(len as u64));
+        group.bench_with_input(BenchmarkId::new("decode_attribute", len), &attribute, |b, i| {
+            b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
+        });
     }
 }
 
