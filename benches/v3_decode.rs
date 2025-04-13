@@ -77,7 +77,7 @@ struct DecodeArrayTreeParams(Vec<(Vec<u8>, usize)>);
 
 impl DecodeArrayTreeParams {
     fn new() -> Self {
-        let lens = [10usize, 100, 1000, 10000];
+        let lens = [10usize, 100, 1000];
         let mut params = Vec::with_capacity(lens.len());
         for &len in lens.iter() {
             let p = build_array_tree(len);
@@ -125,26 +125,26 @@ impl DecodeAttributeParams {
 }
 
 fn v3_decode(c: &mut Criterion) {
-    // let bulk_params = DecodeBulkParams::new();
-    // let array_params = DecodeArrayParams::new();
+    let bulk_params = DecodeBulkParams::new();
+    let array_params = DecodeArrayParams::new();
     let array_tree_params = DecodeArrayTreeParams::new();
-    // let attribute_params = DecodeAttributeParams::new();
+    let attribute_params = DecodeAttributeParams::new();
 
     let mut group = c.benchmark_group("v3_decode");
 
-    // for (bluk, len) in bulk_params.0 {
-    //     group.throughput(Throughput::Elements(len as u64));
-    //     group.bench_with_input(BenchmarkId::new("decode_bulk", len), &bluk, |b, i| {
-    //         b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
-    //     });
-    // }
+    for (bluk, len) in bulk_params.0 {
+        group.throughput(Throughput::Elements(len as u64));
+        group.bench_with_input(BenchmarkId::new("decode_bulk", len), &bluk, |b, i| {
+            b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
+        });
+    }
 
-    // for (array, len) in array_params.0 {
-    //     group.throughput(Throughput::Elements(len as u64));
-    //     group.bench_with_input(BenchmarkId::new("decode_array", len), &array, |b, i| {
-    //         b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
-    //     });
-    // }
+    for (array, len) in array_params.0 {
+        group.throughput(Throughput::Elements(len as u64));
+        group.bench_with_input(BenchmarkId::new("decode_array", len), &array, |b, i| {
+            b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
+        });
+    }
 
     for (array_tree, len) in array_tree_params.0 {
         group.throughput(Throughput::Elements(len as u64));
@@ -157,12 +157,12 @@ fn v3_decode(c: &mut Criterion) {
         );
     }
 
-    // for (attribute, len) in attribute_params.0 {
-    //     group.throughput(Throughput::Elements(len as u64));
-    //     group.bench_with_input(BenchmarkId::new("decode_attribute", len), &attribute, |b, i| {
-    //         b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
-    //     });
-    // }
+    for (attribute, len) in attribute_params.0 {
+        group.throughput(Throughput::Elements(len as u64));
+        group.bench_with_input(BenchmarkId::new("decode_attribute", len), &attribute, |b, i| {
+            b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
+        });
+    }
 }
 
 criterion_group!(benches, v3_decode);
