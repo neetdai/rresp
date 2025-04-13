@@ -48,7 +48,7 @@ impl<'a> Lexer<'a> {
         let first = self.input.get(start_position)?;
         let mut start_position = start_position + 1;
 
-        let mut tag_type = match first {
+        let tag_type = match first {
             b'+' => {
                 self.last_position = end_position + 2;
                 TagType::SimpleString

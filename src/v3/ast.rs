@@ -219,7 +219,7 @@ impl<'a> Ast<'a> {
         let options = ParseIntegerOptions::new();
         let len = parse_with_options::<usize, &[u8], STANDARD>(len_bytes, &options)?;
 
-        let mut data = MiniVec::with_capacity(len);
+        let data = MiniVec::with_capacity(len);
 
         let mut stack = Vec::new();
         stack.push((data, len));

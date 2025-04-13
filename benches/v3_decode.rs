@@ -35,12 +35,14 @@ struct DecodeBulkParams(Vec<(Vec<u8>, usize)>);
 
 impl DecodeBulkParams {
     fn new() -> Self {
-        let params = vec![
-            (build_bulk(16), 16),
-            (build_bulk(1024), 1024),
-            (build_bulk(10240), 10240),
-            (build_bulk(102400), 102400),
-        ];
+        let lens = [16usize, 1024, 10240, 102400];
+
+        let mut params = Vec::with_capacity(lens.len());
+        for &len in lens.iter() {
+            let p = build_bulk(len);
+            let p_len = p.len();
+            params.push((p, p_len));
+        }
         Self(params)
     }
 }
@@ -49,12 +51,13 @@ struct DecodeArrayParams(Vec<(Vec<u8>, usize)>);
 
 impl DecodeArrayParams {
     fn new() -> Self {
-        let params = vec![
-            (build_array(10, || build_bulk(16)), 10),
-            (build_array(100, || build_bulk(16)), 100),
-            (build_array(1000, || build_bulk(16)), 1000),
-            (build_array(10000, || build_bulk(16)), 10000),
-        ];
+        let lens = [10usize, 100, 1000, 10000];
+        let mut params = Vec::with_capacity(lens.len());
+        for &len in lens.iter() {
+            let p = build_array(len, || build_bulk(16));
+            let p_len = p.len();
+            params.push((p, p_len));
+        }
         Self(params)
     }
 }
@@ -74,12 +77,13 @@ struct DecodeArrayTreeParams(Vec<(Vec<u8>, usize)>);
 
 impl DecodeArrayTreeParams {
     fn new() -> Self {
-        let params = vec![
-            (build_array_tree(10), 10),
-            (build_array_tree(100), 100),
-            (build_array_tree(1000), 1000),
-            // (build_array_tree(10000), 10000),
-        ];
+        let lens = [10usize, 100, 1000, 10000];
+        let mut params = Vec::with_capacity(lens.len());
+        for &len in lens.iter() {
+            let p = build_array_tree(len);
+            let p_len = p.len();
+            params.push((p, p_len));
+        }
         Self(params)
     }
 }
@@ -108,38 +112,39 @@ struct DecodeAttributeParams(Vec<(Vec<u8>, usize)>);
 
 impl DecodeAttributeParams {
     fn new() -> Self {
-        let params = vec![
-            (build_attribute(10), 10),
-            (build_attribute(100), 100),
-            (build_attribute(1000), 1000),
-            // (build_attribute(10000), 10000),
-        ];
+        let lens = [10usize, 100, 1000];
+        let mut params = Vec::with_capacity(lens.len());
+        for &len in lens.iter() {
+            let p = build_attribute(len);
+            let p_len = p.len();
+            params.push((p, p_len));
+        }
         Self(params)
     }
     
 }
 
 fn v3_decode(c: &mut Criterion) {
-    let bulk_params = DecodeBulkParams::new();
-    let array_params = DecodeArrayParams::new();
+    // let bulk_params = DecodeBulkParams::new();
+    // let array_params = DecodeArrayParams::new();
     let array_tree_params = DecodeArrayTreeParams::new();
-    let attribute_params = DecodeAttributeParams::new();
+    // let attribute_params = DecodeAttributeParams::new();
 
     let mut group = c.benchmark_group("v3_decode");
 
-    for (bluk, len) in bulk_params.0 {
-        group.throughput(Throughput::Elements(len as u64));
-        group.bench_with_input(BenchmarkId::new("decode_bulk", len), &bluk, |b, i| {
-            b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
-        });
-    }
+    // for (bluk, len) in bulk_params.0 {
+    //     group.throughput(Throughput::Elements(len as u64));
+    //     group.bench_with_input(BenchmarkId::new("decode_bulk", len), &bluk, |b, i| {
+    //         b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
+    //     });
+    // }
 
-    for (array, len) in array_params.0 {
-        group.throughput(Throughput::Elements(len as u64));
-        group.bench_with_input(BenchmarkId::new("decode_array", len), &array, |b, i| {
-            b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
-        });
-    }
+    // for (array, len) in array_params.0 {
+    //     group.throughput(Throughput::Elements(len as u64));
+    //     group.bench_with_input(BenchmarkId::new("decode_array", len), &array, |b, i| {
+    //         b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
+    //     });
+    // }
 
     for (array_tree, len) in array_tree_params.0 {
         group.throughput(Throughput::Elements(len as u64));
@@ -152,12 +157,12 @@ fn v3_decode(c: &mut Criterion) {
         );
     }
 
-    for (attribute, len) in attribute_params.0 {
-        group.throughput(Throughput::Elements(len as u64));
-        group.bench_with_input(BenchmarkId::new("decode_attribute", len), &attribute, |b, i| {
-            b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
-        });
-    }
+    // for (attribute, len) in attribute_params.0 {
+    //     group.throughput(Throughput::Elements(len as u64));
+    //     group.bench_with_input(BenchmarkId::new("decode_attribute", len), &attribute, |b, i| {
+    //         b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
+    //     });
+    // }
 }
 
 criterion_group!(benches, v3_decode);
