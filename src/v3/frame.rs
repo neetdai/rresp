@@ -1,17 +1,19 @@
 use minivec::MiniVec;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     hash::Hash,
     io::{Result as IoResult, Write},
 };
+use std::convert::TryFrom;
+use crate::v2::Frame as V2Frame;
 
 use lexical::to_string;
 
-use crate::EncodeLen;
+use crate::{EncodeLen, Error};
 
 type Attributes<'a> = HashMap<Frame<'a>, Frame<'a>>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Frame<'a> {
     SimpleString {
         data: &'a [u8],
@@ -334,6 +336,74 @@ impl<'a> EncodeLen for Frame<'a> {
                 text.len() + data.iter().map(|frame| frame.encode_len()).sum::<usize>() + 5
             }
             _ => 0,
+        }
+    }
+}
+
+impl<'a> TryFrom<V2Frame<'a>> for Frame<'a> {
+    type Error = Error;
+
+    fn try_from(v2_frame: V2Frame<'a>) -> Result<Self, Self::Error> {
+        match v2_frame {
+            V2Frame::Array(mut data) => {
+                let v3_data = MiniVec::with_capacity(data.len());
+                let mut stack = Vec::new();
+                let queue = VecDeque::from_iter(data.drain(..));
+                stack.push((v3_data, queue));
+
+                while let Some((mut current_vec, mut queue)) = stack.pop() {
+                    match queue.pop_front() {
+                        Some(V2Frame::BulkString(data)) => {
+                            let frame = Self::Bulkstring { data, attributes: None };
+                            current_vec.push(frame);
+                            stack.push((current_vec, queue));
+                        },
+                        Some(V2Frame::SimpleString(data)) => {
+                            let frame = Self::SimpleString { data, attributes: None };
+                            current_vec.push(frame);
+                            stack.push((current_vec, queue));
+                        },
+                        Some(V2Frame::SimpleError(data)) => {
+                            let frame = Self::SimpleError { data, attributes: None };
+                            current_vec.push(frame);
+                            stack.push((current_vec, queue));
+                        },
+                        Some(V2Frame::Null) => {
+                            let frame = Self::Null { data: ()};
+                            current_vec.push(frame);
+                            stack.push((current_vec, queue));
+                        },
+                        Some(V2Frame::Integer(data)) => {
+                            let frame = Self::Integer { data: data as isize, attributes: None };
+                            current_vec.push(frame);
+                            stack.push((current_vec, queue));
+                        }
+                        Some(V2Frame::Array(mut new_data)) => {
+                            let new_vec = MiniVec::with_capacity(new_data.len());
+                            let new_queue = VecDeque::from_iter(new_data.drain(..));
+
+                            stack.push((current_vec, queue));
+                            stack.push((new_vec, new_queue));
+                        }
+                        None => {
+                            if stack.is_empty() {
+                                let frame = Self::Array { data: current_vec, attributes: None };
+                                return Ok(frame);
+                            } else if let Some((parent_vec, _)) = stack.last_mut() {
+                                let frame = Self::Array { data: current_vec, attributes: None };
+                                parent_vec.push(frame);
+                            }
+                        }
+                    }
+                }
+
+                Err(Error::InvalidArray)
+            },
+            V2Frame::BulkString(data) => Ok(Self::Bulkstring { data, attributes: None }),
+            V2Frame::SimpleError(data) => Ok(Self::SimpleError { data, attributes: None }),
+            V2Frame::Integer(data) => Ok(Self::Integer { data: data as isize, attributes: None }),
+            V2Frame::Null => Ok(Self::Null { data: () }),
+            V2Frame::SimpleString(data) => Ok(Self::SimpleString { data, attributes: None }),
         }
     }
 }
