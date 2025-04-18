@@ -1,11 +1,13 @@
-use std::io::{Result as IoResult, Write};
+use std::{collections::VecDeque, io::{Result as IoResult, Write}};
 
 use lexical::to_string;
 
-use crate::EncodeLen;
+use crate::{EncodeLen, common::Error};
 
-use super::{utils::CRLF, Lexer};
+use super::utils::CRLF;
 use minivec::MiniVec;
+use crate::v3::Frame as V3Frame;
+use std::convert::TryFrom;
 
 #[derive(Debug, PartialEq)]
 pub enum Frame<'a> {
@@ -142,6 +144,66 @@ impl<'a> EncodeLen for Frame<'a> {
                 let array_len_str = to_string(array_len);
                 3 + array_len_str.len() + array.iter().map(|f| f.encode_len()).sum::<usize>()
             }
+        }
+    }
+}
+
+impl<'a> TryFrom<V3Frame<'a>> for Frame<'a> {
+    type Error = Error;
+
+    fn try_from(value: V3Frame<'a>) -> Result<Self, Self::Error> {
+        match value {
+            V3Frame::Null { data: _ } => Ok(Self::Null),
+            V3Frame::Integer { data, attributes } => Ok(Self::Integer(data as i64)),
+            V3Frame::SimpleString { data, attributes } => Ok(Self::SimpleString(data)),
+            V3Frame::SimpleError { data, attributes } => Ok(Self::SimpleError(data)),
+            V3Frame::Bulkstring { data, attributes } => Ok(Self::BulkString(data)),
+            V3Frame::Array { mut data, attributes } => {
+                let v2_data = MiniVec::with_capacity(data.len());
+                let mut stack = Vec::new();
+                let queue = VecDeque::from_iter(data.drain(..));
+                stack.push((v2_data, queue));
+
+                while let Some((mut current_vec, mut current_queue)) = stack.pop() {
+                    match current_queue.pop_front() {
+                        Some(V3Frame::Null { data: _ }) => {
+                            current_vec.push(Frame::Null);
+                            stack.push((current_vec, current_queue));
+                        }
+                        Some(V3Frame::Integer { data, attributes }) => {
+                            current_vec.push(Frame::Integer(data as i64));
+                            stack.push((current_vec, current_queue));
+                        }
+                        Some(V3Frame::SimpleString { data, attributes }) => {
+                            current_vec.push(Frame::SimpleString(data));
+                            stack.push((current_vec, current_queue));
+                        }
+                        Some(V3Frame::SimpleError { data, attributes }) => {
+                            current_vec.push(Frame::SimpleError(data));
+                            stack.push((current_vec, current_queue));
+                        }
+                        Some(V3Frame::Array { mut data, attributes }) => {
+                            let new_vec = MiniVec::with_capacity(data.len());
+                            let new_queue = VecDeque::from_iter(data.drain(..));
+                            stack.push((current_vec, current_queue));
+                            stack.push((new_vec, new_queue));
+                        }
+                        Some(_) => return Err(Error::Unknown),
+                        None => {
+                            if stack.is_empty() {
+                                let frame = Self::Array(current_vec);
+                                return Ok(frame);
+                            } else if let Some((parent_vec, _)) = stack.last_mut() {
+                                let frame = Self::Array(current_vec);
+                                parent_vec.push(frame);
+                            }
+                        },
+                    }
+                }
+
+                Err(Error::InvalidArray)
+            }
+            _ => Err(Error::Unknown),
         }
     }
 }
