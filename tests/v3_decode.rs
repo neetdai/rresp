@@ -75,7 +75,7 @@ fn decode_v3() {
                         data: -1,
                         attributes: None
                     },
-                    Frame::Bulkstring {
+                    Frame::BulkString {
                         data: b"hello",
                         attributes: None
                     },
@@ -106,7 +106,7 @@ fn decode_v3() {
 
     let mut data = HashMap::new();
     data.insert(
-        Frame::Bulkstring {
+        Frame::BulkString {
             data: b"bar",
             attributes: None,
         },

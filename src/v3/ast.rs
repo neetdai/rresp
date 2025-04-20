@@ -166,7 +166,7 @@ impl<'a> Ast<'a> {
         attributes: Option<HashMap<Frame<'a>, Frame<'a>>>,
     ) -> Result<Frame<'a>, Error> {
         match self.input.get(start_position..end_position) {
-            Some(data) => Ok(Frame::Bulkstring { data, attributes }),
+            Some(data) => Ok(Frame::BulkString { data, attributes }),
             None => Err(Error::NotComplete),
         }
     }
@@ -577,15 +577,15 @@ mod test {
             ast.next().unwrap().unwrap(),
             Frame::Array {
                 data: mini_vec![
-                    Frame::Bulkstring {
+                    Frame::BulkString {
                         data: b"foo",
                         attributes: None
                     },
-                    Frame::Bulkstring {
+                    Frame::BulkString {
                         data: b"bar",
                         attributes: None
                     },
-                    Frame::Bulkstring {
+                    Frame::BulkString {
                         data: b"baz",
                         attributes: None
                     },
@@ -601,7 +601,7 @@ mod test {
             ast.next().unwrap().unwrap(),
             Frame::Array {
                 data: mini_vec![Frame::Array {
-                    data: mini_vec![Frame::Bulkstring {
+                    data: mini_vec![Frame::BulkString {
                         data: b"foo",
                         attributes: None
                     }],
@@ -621,11 +621,11 @@ mod test {
             ast.next().unwrap().unwrap(),
             Frame::Map {
                 data: HashMap::from([(
-                    Frame::Bulkstring {
+                    Frame::BulkString {
                         data: b"bar",
                         attributes: None
                     },
-                    Frame::Bulkstring {
+                    Frame::BulkString {
                         data: b"bat",
                         attributes: None
                     }
@@ -648,7 +648,7 @@ mod test {
         assert_eq!(
             ast.next().unwrap(),
             Ok(Frame::Push {
-                data: mini_vec![Frame::Bulkstring {
+                data: mini_vec![Frame::BulkString {
                     data: b"bar",
                     attributes: None
                 }]

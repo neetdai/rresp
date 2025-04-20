@@ -16,7 +16,7 @@ fn v3_encode(c: &mut Criterion) {
     group.throughput(Throughput::Elements(11));
     group.bench_function("bulk_string", |b| {
         b.iter(|| {
-            let frame = Frame::Bulkstring {
+            let frame = Frame::BulkString {
                 data: b"hello",
                 attributes: None,
             };
@@ -25,7 +25,7 @@ fn v3_encode(c: &mut Criterion) {
     });
 
     let frame = Frame::Array {
-        data: mini_vec![Frame::Bulkstring {
+        data: mini_vec![Frame::BulkString {
             data: b"hello",
             attributes: None,
         }],
@@ -35,7 +35,7 @@ fn v3_encode(c: &mut Criterion) {
     group.bench_function("array", |b| {
         b.iter(|| {
             let frame = Frame::Array {
-                data: mini_vec![Frame::Bulkstring {
+                data: mini_vec![Frame::BulkString {
                     data: b"hello",
                     attributes: None,
                 }],
@@ -47,7 +47,7 @@ fn v3_encode(c: &mut Criterion) {
 
     let frame = Frame::Array {
         data: mini_vec![Frame::Array {
-            data: mini_vec![Frame::Bulkstring {
+            data: mini_vec![Frame::BulkString {
                 data: b"hello",
                 attributes: None,
             }],
@@ -60,7 +60,7 @@ fn v3_encode(c: &mut Criterion) {
         b.iter(|| {
             let frame = Frame::Array {
                 data: mini_vec![Frame::Array {
-                    data: mini_vec![Frame::Bulkstring {
+                    data: mini_vec![Frame::BulkString {
                         data: b"hello",
                         attributes: None,
                     }],

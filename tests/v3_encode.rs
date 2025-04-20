@@ -41,7 +41,7 @@ fn v3_encode() {
     let encodeed = encode::<V3>(frame).unwrap();
     assert_eq!(encodeed, b"-err\r\n");
 
-    let frame = Frame::Bulkstring {
+    let frame = Frame::BulkString {
         data: b"hello",
         attributes: None,
     };

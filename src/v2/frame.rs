@@ -1,12 +1,15 @@
-use std::{collections::VecDeque, io::{Result as IoResult, Write}};
+use std::{
+    collections::VecDeque,
+    io::{Result as IoResult, Write},
+};
 
 use lexical::to_string;
 
-use crate::{EncodeLen, common::Error};
+use crate::{common::Error, EncodeLen};
 
 use super::utils::CRLF;
-use minivec::MiniVec;
 use crate::v3::Frame as V3Frame;
+use minivec::MiniVec;
 use std::convert::TryFrom;
 
 #[derive(Debug, PartialEq)]
@@ -157,8 +160,11 @@ impl<'a> TryFrom<V3Frame<'a>> for Frame<'a> {
             V3Frame::Integer { data, attributes } => Ok(Self::Integer(data as i64)),
             V3Frame::SimpleString { data, attributes } => Ok(Self::SimpleString(data)),
             V3Frame::SimpleError { data, attributes } => Ok(Self::SimpleError(data)),
-            V3Frame::Bulkstring { data, attributes } => Ok(Self::BulkString(data)),
-            V3Frame::Array { mut data, attributes } => {
+            V3Frame::BulkString { data, attributes } => Ok(Self::BulkString(data)),
+            V3Frame::Array {
+                mut data,
+                attributes,
+            } => {
                 let v2_data = MiniVec::with_capacity(data.len());
                 let mut stack = Vec::new();
                 let queue = VecDeque::from_iter(data.drain(..));
@@ -182,7 +188,10 @@ impl<'a> TryFrom<V3Frame<'a>> for Frame<'a> {
                             current_vec.push(Frame::SimpleError(data));
                             stack.push((current_vec, current_queue));
                         }
-                        Some(V3Frame::Array { mut data, attributes }) => {
+                        Some(V3Frame::Array {
+                            mut data,
+                            attributes,
+                        }) => {
                             let new_vec = MiniVec::with_capacity(data.len());
                             let new_queue = VecDeque::from_iter(data.drain(..));
                             stack.push((current_vec, current_queue));
@@ -197,7 +206,7 @@ impl<'a> TryFrom<V3Frame<'a>> for Frame<'a> {
                                 let frame = Self::Array(current_vec);
                                 parent_vec.push(frame);
                             }
-                        },
+                        }
                     }
                 }
 
@@ -268,6 +277,47 @@ mod test {
         assert_eq!(
             buff,
             b"*5\r\n+Hello\r\n:42\r\n$5\r\nworld\r\n$-1\r\n-err\r\n".to_vec()
+        );
+    }
+
+    #[test]
+    fn test_v3_frame_convert_to_v2_frame() {
+        let frame = V3Frame::Array {
+            data: mini_vec![V3Frame::Array {
+                data: mini_vec![
+                    V3Frame::SimpleString {
+                        data: b"hello",
+                        attributes: None
+                    },
+                    V3Frame::Integer {
+                        data: 23,
+                        attributes: None
+                    },
+                    V3Frame::BulkString {
+                        data: b"str",
+                        attributes: None,
+                    },
+                    V3Frame::Null { data: () },
+                    V3Frame::SimpleError {
+                        data: b"err",
+                        attributes: None
+                    },
+                ],
+                attributes: None
+            },],
+            attributes: None,
+        };
+
+        let v2_frame = Frame::try_from(frame).unwrap();
+        assert_eq!(
+            v2_frame,
+            Frame::Array(mini_vec![Frame::Array(mini_vec![
+                Frame::SimpleString(b"hello"),
+                Frame::Integer(23),
+                Frame::BulkString(b"str"),
+                Frame::Null,
+                Frame::SimpleError(b"err"),
+            ])])
         );
     }
 }

@@ -1,11 +1,11 @@
+use crate::v2::Frame as V2Frame;
 use minivec::MiniVec;
+use std::convert::TryFrom;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     hash::Hash,
     io::{Result as IoResult, Write},
 };
-use std::convert::TryFrom;
-use crate::v2::Frame as V2Frame;
 
 use lexical::to_string;
 
@@ -38,7 +38,7 @@ pub enum Frame<'a> {
         data: f64,
         attributes: Option<Attributes<'a>>,
     },
-    Bulkstring {
+    BulkString {
         data: &'a [u8],
         attributes: Option<Attributes<'a>>,
     },
@@ -80,7 +80,7 @@ impl<'a> Hash for Frame<'a> {
             Self::Null { data } => data.hash(state),
             Self::Integer { data, attributes } => data.hash(state),
             Self::Double { data, attributes } => data.to_be_bytes().hash(state),
-            Self::Bulkstring { data, attributes } => data.hash(state),
+            Self::BulkString { data, attributes } => data.hash(state),
             Self::BulkError { data, attributes } => data.hash(state),
             Self::VerbatimString { data, attributes } => data.hash(state),
             Self::BigNumber { data, attributes } => data.hash(state),
@@ -176,7 +176,7 @@ impl<'a> Frame<'a> {
                 writer.write(text.as_bytes())?;
                 writer.write(b"\r\n")?;
             }
-            Self::Bulkstring { data, attributes } => {
+            Self::BulkString { data, attributes } => {
                 let data_len = data.len();
                 let data_len_text = to_string(data_len);
                 Self::attibutes_encode(attributes, writer)?;
@@ -289,7 +289,7 @@ impl<'a> EncodeLen for Frame<'a> {
                 let text = to_string(*data);
                 text.len() + 3 + attributes_len
             }
-            Self::Bulkstring { data, attributes } => {
+            Self::BulkString { data, attributes } => {
                 let attributes_len = Self::attributes_len(attributes);
                 let text = to_string(data.len());
                 text.len() + data.len() + 5 + attributes_len
@@ -354,27 +354,39 @@ impl<'a> TryFrom<V2Frame<'a>> for Frame<'a> {
                 while let Some((mut current_vec, mut queue)) = stack.pop() {
                     match queue.pop_front() {
                         Some(V2Frame::BulkString(data)) => {
-                            let frame = Self::Bulkstring { data, attributes: None };
+                            let frame = Self::BulkString {
+                                data,
+                                attributes: None,
+                            };
                             current_vec.push(frame);
                             stack.push((current_vec, queue));
-                        },
+                        }
                         Some(V2Frame::SimpleString(data)) => {
-                            let frame = Self::SimpleString { data, attributes: None };
+                            let frame = Self::SimpleString {
+                                data,
+                                attributes: None,
+                            };
                             current_vec.push(frame);
                             stack.push((current_vec, queue));
-                        },
+                        }
                         Some(V2Frame::SimpleError(data)) => {
-                            let frame = Self::SimpleError { data, attributes: None };
+                            let frame = Self::SimpleError {
+                                data,
+                                attributes: None,
+                            };
                             current_vec.push(frame);
                             stack.push((current_vec, queue));
-                        },
+                        }
                         Some(V2Frame::Null) => {
-                            let frame = Self::Null { data: ()};
+                            let frame = Self::Null { data: () };
                             current_vec.push(frame);
                             stack.push((current_vec, queue));
-                        },
+                        }
                         Some(V2Frame::Integer(data)) => {
-                            let frame = Self::Integer { data: data as isize, attributes: None };
+                            let frame = Self::Integer {
+                                data: data as isize,
+                                attributes: None,
+                            };
                             current_vec.push(frame);
                             stack.push((current_vec, queue));
                         }
@@ -387,10 +399,16 @@ impl<'a> TryFrom<V2Frame<'a>> for Frame<'a> {
                         }
                         None => {
                             if stack.is_empty() {
-                                let frame = Self::Array { data: current_vec, attributes: None };
+                                let frame = Self::Array {
+                                    data: current_vec,
+                                    attributes: None,
+                                };
                                 return Ok(frame);
                             } else if let Some((parent_vec, _)) = stack.last_mut() {
-                                let frame = Self::Array { data: current_vec, attributes: None };
+                                let frame = Self::Array {
+                                    data: current_vec,
+                                    attributes: None,
+                                };
                                 parent_vec.push(frame);
                             }
                         }
@@ -398,12 +416,71 @@ impl<'a> TryFrom<V2Frame<'a>> for Frame<'a> {
                 }
 
                 Err(Error::InvalidArray)
-            },
-            V2Frame::BulkString(data) => Ok(Self::Bulkstring { data, attributes: None }),
-            V2Frame::SimpleError(data) => Ok(Self::SimpleError { data, attributes: None }),
-            V2Frame::Integer(data) => Ok(Self::Integer { data: data as isize, attributes: None }),
+            }
+            V2Frame::BulkString(data) => Ok(Self::BulkString {
+                data,
+                attributes: None,
+            }),
+            V2Frame::SimpleError(data) => Ok(Self::SimpleError {
+                data,
+                attributes: None,
+            }),
+            V2Frame::Integer(data) => Ok(Self::Integer {
+                data: data as isize,
+                attributes: None,
+            }),
             V2Frame::Null => Ok(Self::Null { data: () }),
-            V2Frame::SimpleString(data) => Ok(Self::SimpleString { data, attributes: None }),
+            V2Frame::SimpleString(data) => Ok(Self::SimpleString {
+                data,
+                attributes: None,
+            }),
         }
+    }
+}
+
+mod test {
+    use super::*;
+    use minivec::mini_vec;
+
+    #[test]
+    fn test_v2_frame_convert_to_v3_frame() {
+        let v2_frame = V2Frame::Array(mini_vec![V2Frame::Array(mini_vec![
+            V2Frame::SimpleString(b"hello"),
+            V2Frame::Integer(45),
+            V2Frame::Null,
+            V2Frame::BulkString(b"str"),
+            V2Frame::SimpleError(b"error"),
+        ])]);
+
+        let v3_frame = Frame::try_from(v2_frame).unwrap();
+
+        assert_eq!(
+            v3_frame,
+            Frame::Array {
+                data: mini_vec![Frame::Array {
+                    data: mini_vec![
+                        Frame::SimpleString {
+                            data: b"hello",
+                            attributes: None,
+                        },
+                        Frame::Integer {
+                            data: 45,
+                            attributes: None,
+                        },
+                        Frame::Null { data: () },
+                        Frame::BulkString {
+                            data: b"str",
+                            attributes: None,
+                        },
+                        Frame::SimpleError {
+                            data: b"error",
+                            attributes: None
+                        },
+                    ],
+                    attributes: None,
+                }],
+                attributes: None,
+            }
+        );
     }
 }

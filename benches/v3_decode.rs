@@ -121,7 +121,6 @@ impl DecodeAttributeParams {
         }
         Self(params)
     }
-    
 }
 
 fn v3_decode(c: &mut Criterion) {
@@ -159,9 +158,13 @@ fn v3_decode(c: &mut Criterion) {
 
     for (attribute, len) in attribute_params.0 {
         group.throughput(Throughput::Elements(len as u64));
-        group.bench_with_input(BenchmarkId::new("decode_attribute", len), &attribute, |b, i| {
-            b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
-        });
+        group.bench_with_input(
+            BenchmarkId::new("decode_attribute", len),
+            &attribute,
+            |b, i| {
+                b.iter(|| decode::<V3>(black_box(i)).unwrap().unwrap());
+            },
+        );
     }
 }
 
