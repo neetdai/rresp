@@ -188,6 +188,10 @@ impl<'a> TryFrom<V3Frame<'a>> for Frame<'a> {
                             current_vec.push(Frame::SimpleError(data));
                             stack.push((current_vec, current_queue));
                         }
+                        Some(V3Frame::BulkString { data, attributes }) => {
+                            current_vec.push(Frame::BulkString(data));
+                            stack.push((current_vec, current_queue));
+                        }
                         Some(V3Frame::Array {
                             mut data,
                             attributes,
